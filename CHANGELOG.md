@@ -1,5 +1,85 @@
 # Changelog
 
+## v0.6.0 (2026-06-09) — 社交与分享版本
+
+### 新增
+- **分享卡片生成**（`src/lib/share-card.ts` + `SharePanel.tsx`）
+  - Canvas 540×960 PNG（9:16 竖版社媒友好）
+  - 包含：用户 emoji + 等级 + 主题 + 宠物 + 合成次数 + 最佳连击 + 主题水印
+  - 按钮：📥 下载 PNG / 📋 复制分享文案
+  - 入口：更多 Tab → "分享我的合成" + 图鉴 Lv.10+ emoji 弹层 → "🖼️ 分享这张"
+- **本地排行榜**（`src/lib/leaderboard.ts` + `LeaderboardPanel.tsx`）
+  - 3 个榜单：🔥 最高连击 / ⭐ 最高等级 / 🏆 通关主题
+  - localStorage 存多玩家（`emoji2048_leaderboard_v1`）
+  - 名字可自定义或留空随机
+  - 序号彩牌（🥇 金 / 🥈 银 / 🥉 铜）
+- **周末双倍活动**（`src/lib/weekend.ts`）
+  - 周六/周日全事件 coin ×2
+  - 主页 buff 条加 "🎉 周末双倍" 动画标识
+  - 提醒玩家周末来玩
+- **图鉴展示墙**（`CollectionView.tsx` 改造）
+  - 12 主题选择 + 树视图（grid-cols-6 替代 11 列）
+  - 点击已解锁 emoji 弹层 `NodePreview`（大图 + 故事）
+  - Lv.10+ 节点解锁"🖼️ 分享这张"按钮
+- **CI 修复**：补 `@types/node`（vite.config.ts 的 `node:path`/`__dirname`）
+
+### 验证
+- TypeScript: 0 错误
+- Vitest: 37 测试通过
+- Vite build: 113.02 KB gzip（89 modules）
+- GitHub Pages: 自动部署成功
+
+---
+
+## v0.5.0 (2026-06-09) — 成就与深度版本
+
+### 新增
+- **40+ 成就系统**（`src/lib/achievements.ts` + `AchievementsPanel.tsx`）
+  - 6 类分组：merge(8) / collect(8) / gacha(5) / pet(8) / combo(5) / awaken(5)
+  - 进度条 + 解锁提示
+  - 稀有 / 史诗 / 神话 / 传说 四档品质
+- **7 套宠物装扮**（`src/lib/outfits.ts` + `OutfitsPanel.tsx`）
+  - 👑 王冠 / ☀️ 太阳冠（限定 - 通关全部 12 区解锁）/ 🌸 樱花 / 🎉 派对 / 🧙 法师 / 🌵 仙人掌 / 🌈 彩虹
+  - 装扮应用到 Pet 组件显示
+- **3 首 BGM**（`src/lib/bgm.ts`，BgmPlayer 类）
+  - 日常 casual / 战斗 battle / 觉醒 awaken
+  - Web Audio API 合成旋律 + 鼓点
+  - 切换场景自动切歌
+- **设置面板**（`SettingsPanel.tsx`）
+  - 音乐 / 音效 / 震动 / 重置进度
+  - 持久化偏好
+
+### 验证
+- TypeScript: 0 错误
+- Vitest: 37 测试通过
+- Vite build: 109.78 KB gzip（84 modules）
+
+---
+
+## v0.4.0 (2026-06-09) — 留存与日活版本
+
+### 新增
+- **7 日签到**（`src/lib/checkin.ts` + `CheckinPanel.tsx`）
+  - 7 日连击奖励（10/30/50+1扭/80/100+1神/150/200+太阳冠）
+  - 主页 🎁 按钮带"待签"红点
+  - 连续中断 → 重新开始
+- **回归奖励**（`ComebackModal.tsx` + `calcComebackReward()`）
+  - 24h+ 未见 → 欢迎弹窗
+  - 按天数分级：1-2 天小礼 / 3-6 选中礼 / 7+ 大礼
+- **7 日挑战**（`Challenge` 接口 + `generateChallenges()`）
+  - 池：合成 20/达 Lv.8/解锁 2 区/连击 ×10/扭蛋 10/喂食 3/抚摸 5/觉醒 1/集齐 1 区 11 等级/完成 3 任务
+  - 进度条 + 完成后奖励领取
+- **数据面板**（`StatsPanel.tsx` + `history` 字段）
+  - 累计扭蛋/总合成/总消耗/总收益/最佳连击/历史
+  - 7 日活跃度 SVG 折线图
+
+### 验证
+- TypeScript: 0 错误
+- Vitest: 37 测试通过
+- Vite build: 104.97 KB gzip
+
+---
+
 ## v0.3.0 (2026-06-09) — PM 终极优化
 
 ### 新增
