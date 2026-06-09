@@ -1,5 +1,5 @@
 /**
- * 主页 Tab（v0.3：季节buff + 主线任务条 + v0.4 签到/挑战/统计入口）
+ * 主页 Tab（v0.3：季节buff + 主线任务条 + v0.4 签到/挑战/统计入口 + v0.6 周末双倍）
  */
 import { Gashapon } from '@/components/gashapon/Gashapon'
 import { MergeGrid } from '@/components/grid/MergeGrid'
@@ -9,6 +9,7 @@ import { useUiStore } from '@/store/uiStore'
 import { ZONES, MAX_LEVEL } from '@/data/emoji-trees'
 import { computeBuff, seasonEmoji, seasonLabel } from '@/lib/season'
 import { hasCheckedInToday } from '@/lib/checkin'
+import { isWeekendDouble } from '@/lib/weekend'
 
 export function HomeTab() {
   const coins = useGameStore(s => s.coins)
@@ -35,6 +36,7 @@ export function HomeTab() {
   const buff = computeBuff(currentZone)
   const checkedToday = hasCheckedInToday(checkin)
   const challengesDone = challenges.filter((c: any) => c._claimed).length
+  const weekend = isWeekendDouble()
 
   return (
     <div className="flex w-full flex-col items-center gap-3 px-3 py-2">
@@ -90,6 +92,12 @@ export function HomeTab() {
           <span className="text-white/70">今日 <span className="text-gold-400 font-bold">{seasonLabel(buff.season)}季</span></span>
           <span className="text-white/30">·</span>
           <span>幸运区 <span className="text-emerald-400">{buff.luckyZoneName}</span></span>
+          {weekend && (
+            <>
+              <span className="text-white/30">·</span>
+              <span className="text-rose-400 font-bold animate-pulse">🎉 周末双倍</span>
+            </>
+          )}
         </div>
         {buff.multiplier > 1 ? (
           <span className="rounded-full bg-gold-500/30 px-2 py-0.5 font-mono text-[10px] font-bold text-gold-300">

@@ -1,5 +1,5 @@
 /**
- * App 主壳（v0.3：全局层挂载 CoinBurst/ComboMeter/ZoneGallery，v0.4：Checkin/Stats/回归）
+ * App 主壳（v0.3：全局层挂载 CoinBurst/ComboMeter/ZoneGallery，v0.4：Checkin/Stats/回归，v0.5：成就/装扮/设置，v0.6：分享/排行）
  */
 import { useEffect, useState } from 'react'
 import { useGameStore } from '@/store/gameStore'
@@ -21,6 +21,8 @@ import { StatsPanel } from '@/components/ui/StatsPanel'
 import { AchievementsPanel } from '@/components/ui/AchievementsPanel'
 import { OutfitsPanel } from '@/components/ui/OutfitsPanel'
 import { SettingsPanel } from '@/components/ui/SettingsPanel'
+import { SharePanel } from '@/components/ui/SharePanel'
+import { LeaderboardPanel } from '@/components/ui/LeaderboardPanel'
 
 const TABS = [
   { id: 'home' as const, icon: '🏠', label: '主页' },
@@ -73,7 +75,7 @@ export default function App() {
           <span className="text-lg">🌟</span>
           <div className="flex flex-col leading-tight">
             <span className="text-sm font-bold text-white/90">扭蛋 2048</span>
-            <span className="text-[9px] text-white/30">合成生态 v0.5</span>
+            <span className="text-[9px] text-white/30">合成生态 v0.6</span>
           </div>
         </div>
         <div className="text-[10px] text-white/30">
@@ -121,6 +123,8 @@ export default function App() {
       <AchievementsPanel />
       <OutfitsPanel />
       <SettingsPanel />
+      <SharePanel />
+      <LeaderboardPanel />
     </div>
   )
 }

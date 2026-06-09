@@ -1,5 +1,5 @@
 /**
- * 更多 Tab：宠物详情、API 文案、设置
+ * 更多 Tab：宠物详情、API 文案、设置、v0.5 入口、v0.6 分享+排行入口
  */
 import { useEffect, useState } from 'react'
 import { useGameStore } from '@/store/gameStore'
@@ -161,6 +161,39 @@ export function MoreTab() {
         </button>
       </div>
 
+      {/* v0.6 入口：分享/排行榜 */}
+      <div className="grid grid-cols-2 gap-2">
+        <button
+          onClick={() => {
+            const coins = useGameStore.getState().coins
+            const maxLevel = useGameStore.getState().maxLevel
+            useUiStore.getState().setShareCard({
+              emoji: pet?.speciesEmoji ?? '🌟',
+              level: maxLevel,
+              title: `扭蛋 2048 · Lv.${maxLevel} · 🪙${coins}`,
+            })
+            useUiStore.getState().openShare()
+          }}
+          className="touch-target glass flex items-center gap-2 rounded-2xl p-3 active:scale-95"
+        >
+          <span className="text-2xl">📤</span>
+          <div className="flex-1 text-left">
+            <div className="text-xs text-white/80 font-medium">分享我的合成</div>
+            <div className="text-[9px] text-white/40">生成 9:16 卡片</div>
+          </div>
+        </button>
+        <button
+          onClick={() => useUiStore.getState().openLeaderboard()}
+          className="touch-target glass flex items-center gap-2 rounded-2xl p-3 active:scale-95"
+        >
+          <span className="text-2xl">🏅</span>
+          <div className="flex-1 text-left">
+            <div className="text-xs text-white/80 font-medium">本地排行榜</div>
+            <div className="text-[9px] text-white/40">连击 / 等级 / 通关</div>
+          </div>
+        </button>
+      </div>
+
       {/* 设置 */}
       <div className="glass rounded-2xl p-3">
         <div className="text-xs text-white/50 mb-2">⚙️ 设置</div>
@@ -199,7 +232,7 @@ export function MoreTab() {
       </div>
 
       <div className="pb-2 text-center text-[10px] text-white/20">
-        扭蛋 2048 · 合成生态 · v0.5
+        扭蛋 2048 · 合成生态 · v0.6
       </div>
     </div>
   )
