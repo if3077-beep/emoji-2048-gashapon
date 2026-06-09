@@ -1,5 +1,5 @@
 /**
- * App 主壳（v0.2：全局层挂载 CoinBurst/ComboMeter/ZoneGallery）
+ * App 主壳（v0.3：全局层挂载 CoinBurst/ComboMeter/ZoneGallery，v0.4：Checkin/Stats/回归）
  */
 import { useEffect, useState } from 'react'
 import { useGameStore } from '@/store/gameStore'
@@ -15,6 +15,9 @@ import { Guide } from '@/components/ui/Guide'
 import { CoinBurstLayer } from '@/components/ui/CoinBurst'
 import { ComboMeter } from '@/components/ui/ComboMeter'
 import { ZoneGallery } from '@/components/collection/ZoneGallery'
+import { CheckinPanel } from '@/components/ui/CheckinPanel'
+import { ComebackModal } from '@/components/ui/ComebackModal'
+import { StatsPanel } from '@/components/ui/StatsPanel'
 
 const TABS = [
   { id: 'home' as const, icon: '🏠', label: '主页' },
@@ -34,12 +37,16 @@ export default function App() {
   const [loaded, setLoaded] = useState(false)
 
   useEffect(() => {
-    // 启动时从存档恢复
     useGameStore.getState().load()
     setLoaded(true)
+    // v0.4 启动时检测回归
+    useGameStore.getState().detectComeback()
+    // 关页面前
+    const onUnload = () => useGameStore.getState().beforeUnload()
+    window.addEventListener('beforeunload', onUnload)
+    return () => window.removeEventListener('beforeunload', onUnload)
   }, [])
 
-  // 首次出现宠物 → 触发彩纸 + 提示
   useEffect(() => {
     if (!loaded) return
     if (pet && tutorialStep === 3) {
@@ -58,13 +65,12 @@ export default function App() {
 
   return (
     <div id="app-root" className="flex h-full flex-col">
-      {/* 顶部 Logo 区 */}
       <header className="flex w-full items-center justify-between px-4 py-2 pt-[max(8px,env(safe-area-inset-top))]">
         <div className="flex items-center gap-1.5">
           <span className="text-lg">🌟</span>
           <div className="flex flex-col leading-tight">
             <span className="text-sm font-bold text-white/90">扭蛋 2048</span>
-            <span className="text-[9px] text-white/30">合成生态 v0.3</span>
+            <span className="text-[9px] text-white/30">合成生态 v0.4</span>
           </div>
         </div>
         <div className="text-[10px] text-white/30">
@@ -72,7 +78,6 @@ export default function App() {
         </div>
       </header>
 
-      {/* 主内容（Tab 切换淡入） */}
       <main className="flex-1 overflow-y-auto scrollbar-hidden pb-[max(70px,calc(60px+env(safe-area-inset-bottom)))]">
         <div key={tab} className="animate-pop">
           {tab === 'home' && <HomeTab />}
@@ -82,10 +87,7 @@ export default function App() {
         </div>
       </main>
 
-      {/* 底部 Tab 栏 */}
-      <nav
-        className="fixed inset-x-0 bottom-0 z-20 flex glass-strong border-t border-white/5 pb-[env(safe-area-inset-bottom)]"
-      >
+      <nav className="fixed inset-x-0 bottom-0 z-20 flex glass-strong border-t border-white/5 pb-[env(safe-area-inset-bottom)]">
         {TABS.map(t => (
           <button
             key={t.id}
@@ -110,6 +112,9 @@ export default function App() {
       <CoinBurstLayer bursts={bursts} onSettle={settleBurst} />
       <ComboMeter combo={combo} />
       <ZoneGallery />
+      <CheckinPanel />
+      <ComebackModal />
+      <StatsPanel />
     </div>
   )
 }

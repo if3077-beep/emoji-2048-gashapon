@@ -1,9 +1,5 @@
 /**
- * 主页 Tab（v0.3：季节buff + 主线任务条）
- * - 当前主题卡片 + "切换主题"入口
- * - CoinDisplay 数字滚动
- * - 季节 / 幸运区 / 暴击 buff 提示
- * - 扭蛋机 + 网格 + 任务
+ * 主页 Tab（v0.3：季节buff + 主线任务条 + v0.4 签到/挑战/统计入口）
  */
 import { Gashapon } from '@/components/gashapon/Gashapon'
 import { MergeGrid } from '@/components/grid/MergeGrid'
@@ -12,6 +8,7 @@ import { useGameStore } from '@/store/gameStore'
 import { useUiStore } from '@/store/uiStore'
 import { ZONES, MAX_LEVEL } from '@/data/emoji-trees'
 import { computeBuff, seasonEmoji, seasonLabel } from '@/lib/season'
+import { hasCheckedInToday } from '@/lib/checkin'
 
 export function HomeTab() {
   const coins = useGameStore(s => s.coins)
@@ -23,32 +20,58 @@ export function HomeTab() {
   const zoneMax = useGameStore(s => s.zoneMax)
   const combo = useGameStore(s => s.combo)
   const collection = useGameStore(s => s.collection)
+  const checkin = useGameStore(s => s.checkin)
+  const challenges = useGameStore(s => s.challenges)
 
   const openZoneGallery = useUiStore(s => s.openZoneGallery)
+  const openCheckin = useUiStore(s => s.openCheckin)
+  const openStats = useUiStore(s => s.openStats)
 
   const zone = ZONES[currentZone]
   const currentZoneCol = collection[currentZone] ?? []
   const clearedCount = Object.values(zoneMax).filter(v => v >= MAX_LEVEL).length
   const totalZones = Object.keys(zoneMax).length
 
-  // v0.3：buff
   const buff = computeBuff(currentZone)
+  const checkedToday = hasCheckedInToday(checkin)
+  const challengesDone = challenges.filter((c: any) => c._claimed).length
 
   return (
     <div className="flex w-full flex-col items-center gap-3 px-3 py-2">
-      {/* 货币 + 最高 + Combo */}
-      <div className="flex w-full max-w-[400px] items-center gap-2">
-        <div className="glass flex flex-1 items-center gap-2 rounded-full px-3 py-1.5">
-          <span className="text-lg">🪙</span>
-          <CoinDisplay value={coins} bumpKey={coins} className="text-base" />
-          <span className="text-[10px] text-white/30">扭蛋币</span>
+      {/* 货币 + 最高 + Combo + v0.4 入口 */}
+      <div className="flex w-full max-w-[400px] items-center gap-1.5">
+        <div className="glass flex flex-1 items-center gap-1.5 rounded-full px-2.5 py-1.5">
+          <span className="text-base">🪙</span>
+          <CoinDisplay value={coins} bumpKey={coins} className="text-sm" />
+          <span className="text-[9px] text-white/30">扭蛋币</span>
         </div>
-        <div className="glass flex items-center gap-1.5 rounded-full px-2.5 py-1.5">
-          <span className="text-[10px] text-white/40">最高</span>
-          <span className="font-mono text-sm font-bold text-ember-400">Lv.{maxLevel}</span>
+        <button
+          onClick={openCheckin}
+          className="glass relative flex items-center gap-1 rounded-full px-2 py-1.5 active:scale-95"
+          style={{
+            background: checkedToday ? 'rgba(34,197,94,0.2)' : 'rgba(251,191,36,0.15)',
+          }}
+        >
+          <span className="text-sm">🎁</span>
+          <span className="font-mono text-[10px] font-bold" style={{ color: checkedToday ? '#86efac' : '#fbbf24' }}>
+            {checkin.streak}/7
+          </span>
+          {!checkedToday && (
+            <span className="absolute -right-0.5 -top-0.5 h-1.5 w-1.5 animate-pulse rounded-full bg-red-500" />
+          )}
+        </button>
+        <button
+          onClick={openStats}
+          className="glass flex items-center gap-1 rounded-full px-2 py-1.5 active:scale-95"
+        >
+          <span className="text-sm">📊</span>
+        </button>
+        <div className="glass flex items-center gap-1 rounded-full px-2 py-1.5">
+          <span className="text-[9px] text-white/40">最高</span>
+          <span className="font-mono text-[11px] font-bold text-ember-400">Lv.{maxLevel}</span>
         </div>
         {combo > 1 && (
-          <div className="glass flex items-center gap-1 rounded-full px-2.5 py-1.5">
+          <div className="glass flex items-center gap-1 rounded-full px-2 py-1.5">
             <span className="text-[10px] text-gold-400">×{combo}</span>
           </div>
         )}
@@ -120,12 +143,60 @@ export function HomeTab() {
       {/* 网格 */}
       <MergeGrid />
 
-      {/* 任务 */}
+      {/* 7 日挑战 */}
+      <Challenges challenges={challenges} />
+
+      {/* 每日任务 */}
       <DailyTasks tasks={dailyTasks} onClaim={claimTask} />
 
       {/* 统计 */}
       <div className="w-full max-w-[400px] text-center text-[10px] text-white/25">
-        累计扭蛋 {totalPulls} 次 · 最佳连击 {useGameStore.getState().bestCombo}
+        累计扭蛋 {totalPulls} 次 · 最佳连击 {useGameStore.getState().bestCombo} · 挑战 {challengesDone}/{challenges.length}
+      </div>
+    </div>
+  )
+}
+
+function Challenges({ challenges }: { challenges: any[] }) {
+  return (
+    <div className="w-full max-w-[400px] glass rounded-2xl p-3">
+      <div className="mb-2 flex items-center justify-between text-xs">
+        <span className="text-white/70">🎯 今日 7 日挑战</span>
+        <span className="text-[10px] text-white/30">奖励丰厚</span>
+      </div>
+      <div className="flex flex-col gap-1.5">
+        {challenges.map(c => {
+          const progress = c._progress ?? 0
+          const done = progress >= c.target
+          const claimed = c._claimed
+          return (
+            <div key={c.id} className="flex items-center gap-2 text-xs">
+              <div className="flex-1">
+                <div className={done ? 'line-through text-white/40' : 'text-white/80'}>
+                  {c.desc}
+                </div>
+                <div className="h-1 overflow-hidden rounded-full bg-white/5">
+                  <div
+                    className="h-full transition-all"
+                    style={{
+                      width: `${Math.min(100, (progress / c.target) * 100)}%`,
+                      background: done
+                        ? 'linear-gradient(90deg, #86efac, #a3e635)'
+                        : 'linear-gradient(90deg, #fbbf24, #f97316)',
+                    }}
+                  />
+                </div>
+              </div>
+              <div className="font-mono text-[10px] text-white/40">{progress}/{c.target}</div>
+              {done && !claimed && (
+                <span className="rounded-full bg-purple-500/30 px-2 py-0.5 text-[10px] font-bold text-purple-300">
+                  +{c.reward.coins}🪙
+                </span>
+              )}
+              {claimed && <span className="text-[10px] text-white/30">已领</span>}
+            </div>
+          )
+        })}
       </div>
     </div>
   )

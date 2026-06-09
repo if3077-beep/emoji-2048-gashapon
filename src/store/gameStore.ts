@@ -26,6 +26,16 @@ import { loadSave, writeSave } from '@/lib/persistence'
 import { nextId } from '@/lib/rng'
 import { calcReward, getReward, type EventKind } from '@/lib/event-rewards'
 import { computeBuff, rollCrit } from '@/lib/season'
+import {
+  initialCheckinState,
+  doCheckin,
+  hasCheckedInToday,
+  generateChallenges,
+  calcComebackReward,
+  getDaysSinceLastSeen,
+  type CheckinState,
+  type Challenge,
+} from '@/lib/checkin'
 
 interface GameState {
   // 基础
@@ -48,6 +58,30 @@ interface GameState {
   dailyTasks: DailyTask[]
   dailyDateKey: string
 
+  // v0.4 签到 + 挑战
+  checkin: CheckinState
+  challenges: Challenge[]
+  challengesDateKey: string
+  /** 上次离开时间（用于回归奖励） */
+  lastSeenAt: number
+  /** 今日启动时是否已发放回归奖励 */
+  comebackClaimed: boolean
+  /** 限时弹出"宠物想你" */
+  pendingComeback: { daysSince: number; reward: { coins: number; gacha: number; mythic: number } } | null
+  /** 限时弹出"宠物晚安"（离开前） */
+  pendingGoodnight: boolean
+
+  // 历史统计（v0.4 数据面板）
+  history: {
+    totalSessions: number
+    longestCombo: number
+    totalEarned: number
+    totalSpent: number
+    firstPlayedAt: number
+    /** 每天最高合成等级（最近 7 天） */
+    levelByDay: number[]
+  }
+
   // 教程
   tutorialStep: number
 
@@ -69,6 +103,15 @@ interface GameState {
   // v0.3 宠物互动
   feedPetAction: () => { ok: boolean; formChanged: boolean; newForm?: PetForm; reward?: number; intensity?: 0 | 1 | 2 | 3 }
   petPetAction: () => boolean
+  // v0.4 签到 / 挑战
+  doCheckinAction: () => ReturnType<typeof doCheckin>
+  claimChallenge: (id: string) => boolean
+  setGoodnight: (v: boolean) => void
+  claimComeback: () => void
+  /** 启动时计算回归奖励（写入 pendingComeback） */
+  detectComeback: () => void
+  /** 关页面前调用 */
+  beforeUnload: () => void
 }
 
 const todayKey = (): string => {
@@ -94,6 +137,21 @@ const init = () => {
       petEggStartedAt: saved.petEggStartedAt ?? null,
       dailyTasks: saved.dailyDateKey === todayKey() ? (saved.dailyTasks ?? []) : generateDailyTasks(todayKey()),
       dailyDateKey: saved.dailyDateKey ?? todayKey(),
+      checkin: saved.checkin ?? initialCheckinState(),
+      challenges: saved.challengesDateKey === todayKey() ? (saved.challenges ?? []) : generateChallenges(todayKey()),
+      challengesDateKey: saved.challengesDateKey ?? todayKey(),
+      lastSeenAt: saved.lastSeenAt ?? Date.now(),
+      comebackClaimed: saved.comebackClaimed ?? false,
+      pendingComeback: null,
+      pendingGoodnight: false,
+      history: saved.history ?? {
+        totalSessions: 1,
+        longestCombo: saved.bestCombo ?? 0,
+        totalEarned: 0,
+        totalSpent: 0,
+        firstPlayedAt: Date.now(),
+        levelByDay: [],
+      },
       tutorialStep: saved.tutorialStep ?? 1,
     }
   }
@@ -112,6 +170,21 @@ const init = () => {
     petEggStartedAt: null,
     dailyTasks: generateDailyTasks(todayKey()),
     dailyDateKey: todayKey(),
+    checkin: initialCheckinState(),
+    challenges: generateChallenges(todayKey()),
+    challengesDateKey: todayKey(),
+    lastSeenAt: Date.now(),
+    comebackClaimed: false,
+    pendingComeback: null,
+    pendingGoodnight: false,
+    history: {
+      totalSessions: 1,
+      longestCombo: 0,
+      totalEarned: 0,
+      totalSpent: 0,
+      firstPlayedAt: Date.now(),
+      levelByDay: [],
+    },
     tutorialStep: 1,
   }
 }
@@ -378,6 +451,86 @@ export const useGameStore = create<GameState>((set, get) => ({
     return true
   },
 
+  // v0.4：签到
+  doCheckinAction: () => {
+    const state = get()
+    const r = doCheckin(state.checkin)
+    if (r.alreadyDone || !r.reward) return r
+    // 发放奖励
+    const bonus = r.reward.bonus
+    let addGacha = 0
+    let addMythic = 0
+    if (bonus?.kind === 'gacha') addGacha = bonus.value as number
+    if (bonus?.kind === 'mythic') addMythic = bonus.value as number
+    set({
+      checkin: r.state,
+      coins: state.coins + r.reward.coins,
+      totalPulls: state.totalPulls + addGacha,
+    })
+    return r
+  },
+
+  // v0.4：领取挑战
+  claimChallenge: (id) => {
+    const state = get()
+    const next = state.challenges.map(c => {
+      if (c.id !== id) return c
+      const completed = (c as any)._progress >= c.target
+      if (completed && !(c as any)._claimed) {
+        const ch = { ...c, _claimed: true } as any
+        return ch
+      }
+      return c
+    })
+    const ch = state.challenges.find(c => c.id === id) as any
+    if (!ch || !ch._claimed || !ch._progress || ch._progress < ch.target) return false
+    set({
+      challenges: next,
+      coins: state.coins + (ch.reward?.coins ?? 0),
+    })
+    return true
+  },
+
+  setGoodnight: (v) => set({ pendingGoodnight: v }),
+
+  claimComeback: () => {
+    const state = get()
+    if (!state.pendingComeback || state.comebackClaimed) return
+    const r = state.pendingComeback.reward
+    set({
+      coins: state.coins + r.coins,
+      totalPulls: state.totalPulls + r.gacha,
+      comebackClaimed: true,
+      pendingComeback: null,
+    })
+  },
+
+  detectComeback: () => {
+    const state = get()
+    const last = state.lastSeenAt
+    const days = getDaysSinceLastSeen(last)
+    if (days >= 1) {
+      const reward = calcComebackReward(days)
+      set({
+        pendingComeback: { daysSince: days, reward },
+      })
+    }
+    set({ lastSeenAt: Date.now() })
+  },
+
+  beforeUnload: () => {
+    const state = get()
+    set({
+      lastSeenAt: Date.now(),
+      pendingGoodnight: true,
+      history: {
+        ...state.history,
+        longestCombo: Math.max(state.history.longestCombo, state.bestCombo),
+      },
+    })
+    get().save()
+  },
+
   reset: () => {
     set(init())
   },
@@ -399,6 +552,12 @@ export const useGameStore = create<GameState>((set, get) => ({
       petEggStartedAt: s.petEggStartedAt,
       dailyTasks: s.dailyTasks,
       dailyDateKey: s.dailyDateKey,
+      checkin: s.checkin,
+      challenges: s.challenges,
+      challengesDateKey: s.challengesDateKey,
+      lastSeenAt: s.lastSeenAt,
+      comebackClaimed: s.comebackClaimed,
+      history: s.history,
       tutorialStep: s.tutorialStep,
     })
   },
