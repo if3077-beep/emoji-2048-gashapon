@@ -1,0 +1,231 @@
+/**
+ * 4×4 滑动合并网格（v0.2：方向滑动 + 滑入动效 + 觉醒支持）
+ * - 上/下/左/右滑动 → 整行/列推动 → 自动合并
+ * - 支持触屏和键盘方向键
+ * - 滑动后给 merge-engine 跑一遍事件流
+ */
+import { useGameStore } from '@/store/gameStore'
+import { useUiStore } from '@/store/uiStore'
+import { ZONES, GRID_SIZE, getLevelLabel } from '@/data/emoji-trees'
+import { sfx, resumeAudio } from '@/lib/audio'
+import { levelToTier, type Grid, type Tile, findZoneMax } from '@/lib/merge-engine'
+import { calcReward, getReward, type EventKind } from '@/lib/event-rewards'
+import { useRef, useState, useCallback, useEffect } from 'react'
+import gsap from 'gsap'
+
+const TIER_CLASS = ['tier-common', 'tier-rare', 'tier-epic', 'tier-legend']
+
+const getEmoji = (t: Tile): string => {
+  if (t.level <= 11) return ZONES[t.zone].tree[t.level - 1]?.emoji ?? '·'
+  return ZONES[t.zone].awakenedEmoji
+}
+
+const getName = (t: Tile): string => {
+  if (t.level <= 11) return ZONES[t.zone].tree[t.level - 1]?.name ?? '·'
+  return ZONES[t.zone].awakenedName
+}
+
+type Dir = 'up' | 'down' | 'left' | 'right'
+
+interface SlideState {
+  active: boolean
+  startX: number
+  startY: number
+  startT: number
+}
+
+export function MergeGrid() {
+  const grid = useGameStore(s => s.grid)
+  const slide = useGameStore(s => s.slide)
+  const currentZone = useGameStore(s => s.currentZone)
+  const combo = useGameStore(s => s.combo)
+  const bestCombo = useGameStore(s => s.bestCombo)
+
+  const pushToast = useUiStore(s => s.pushToast)
+  const setGuide = useUiStore(s => s.setGuide)
+  const pushBurst = useUiStore(s => s.pushBurst)
+  const burstConfetti = useUiStore(s => s.burstConfetti)
+
+  const [sliding, setSliding] = useState<SlideState>({ active: false, startX: 0, startY: 0, startT: 0 })
+  const [animTiles, setAnimTiles] = useState<Set<string>>(new Set())
+  const containerRef = useRef<HTMLDivElement>(null)
+  const THRESHOLD = 28  // 触发滑动的最小距离
+
+  const handleDirection = useCallback((dir: Dir, fromX: number, fromY: number) => {
+    resumeAudio()
+    const result = slide(dir)
+    if (result.moves.length === 0) {
+      // 滑动但无变化：断连击
+      sfx.fail()
+      return
+    }
+    // 动画：先滑入标记，200ms 后清
+    const moved = new Set(result.moves.map(m => m.tileId))
+    setAnimTiles(moved)
+    setTimeout(() => setAnimTiles(new Set()), 400)
+
+    // 触发效果
+    result.events.forEach((evt, i) => {
+      setTimeout(() => {
+        const reward = getReward(evt.kind)
+        const finalAmount = (evt as any).finalReward ?? calcReward(evt.kind, { combo: combo + 1, affection: useGameStore.getState().pet?.affection ?? 0 }).final
+        const isCrit = (evt as any).isCrit
+        const isLucky = (evt as any).isLucky
+        if (finalAmount > 0) {
+          // 计算事件屏幕坐标
+          const screen = eventScreenPos(evt.pos, containerRef.current)
+          pushBurst({
+            id: `burst_${Date.now()}_${i}`,
+            amount: finalAmount,
+            text: isCrit ? `💥 +${finalAmount.toLocaleString()}` : `+${finalAmount.toLocaleString()}`,
+            emoji: isCrit ? '💥' : isLucky ? '🍀' : reward.emoji,
+            intensity: isCrit ? 3 : reward.intensity,
+            color: isCrit ? '#ef4444' : isLucky ? '#a3e635' : reward.color,
+            x: screen.x,
+            y: screen.y,
+          })
+          sfx.merge(evt.level)
+          if (evt.level >= 5) sfx.rare()
+          if (evt.level === 11) sfx.celebrate()
+          if (evt.level > 11) sfx.celebrate()
+        }
+        if (evt.kind === 'merge_mythic' || evt.kind === 'merge_epic') {
+          // 升级射线
+          burstConfetti()
+        }
+        if (evt.kind === 'merge_awaken' || evt.kind === 'merge_awaken_t5' || evt.kind === 'merge_awaken_t10') {
+          burstConfetti()
+          sfx.celebrate()
+        }
+        // 飘字
+        const tile = grid[evt.pos[0]]?.[evt.pos[1]]
+        if (tile) {
+          const lvl = tile.level
+          const tier = levelToTier(Math.min(lvl, 11))
+          pushToast(
+            isCrit ? `💥 暴击!` :
+            isLucky ? `🍀 幸运!` :
+            evt.kind === 'merge_first' ? `首合!${getName(tile)}` :
+            evt.kind === 'merge_mythic' ? `神话·${getName(tile)}` :
+            evt.kind === 'merge_epic' ? `史诗·${getName(tile)}` :
+            evt.kind === 'merge_rare' ? `稀有·${getName(tile)}` :
+            getLevelLabel(lvl),
+            isCrit ? '💥' : isLucky ? '🍀' : getEmoji(tile),
+            tier as any,
+          )
+        }
+      }, i * 80)  // 错开爆发
+    })
+  }, [slide, combo, grid, pushToast, pushBurst, burstConfetti])
+
+  // 触屏滑动
+  const onTouchStart = (e: React.PointerEvent) => {
+    setSliding({ active: true, startX: e.clientX, startY: e.clientY, startT: Date.now() })
+  }
+  const onTouchEnd = (e: React.PointerEvent) => {
+    if (!sliding.active) return
+    const dx = e.clientX - sliding.startX
+    const dy = e.clientY - sliding.startY
+    if (Math.abs(dx) < THRESHOLD && Math.abs(dy) < THRESHOLD) {
+      setSliding({ active: false, startX: 0, startY: 0, startT: 0 })
+      return
+    }
+    if (Math.abs(dx) > Math.abs(dy)) {
+      handleDirection(dx > 0 ? 'right' : 'left', sliding.startX, sliding.startY)
+    } else {
+      handleDirection(dy > 0 ? 'down' : 'up', sliding.startX, sliding.startY)
+    }
+    setSliding({ active: false, startX: 0, startY: 0, startT: 0 })
+  }
+
+  // 键盘方向键
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement)?.tagName)) return
+      const map: Record<string, Dir> = {
+        ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right',
+        w: 'up', s: 'down', a: 'left', d: 'right',
+        W: 'up', S: 'down', A: 'left', D: 'right',
+      }
+      const dir = map[e.key]
+      if (dir) {
+        e.preventDefault()
+        const r = containerRef.current?.getBoundingClientRect()
+        handleDirection(dir, (r?.left ?? 0) + (r?.width ?? 0) / 2, (r?.top ?? 0) + (r?.height ?? 0) / 2)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [handleDirection])
+
+  return (
+    <div
+      ref={containerRef}
+      className="relative w-full max-w-[360px] select-none rounded-2xl p-3 glass touch-target"
+      onPointerDown={onTouchStart}
+      onPointerUp={onTouchEnd}
+      onPointerLeave={(e) => { if (sliding.active) onTouchEnd(e) }}
+    >
+      <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${GRID_SIZE}, 1fr)` }}>
+        {grid.flatMap((row, r) =>
+          row.map((tile, c) => {
+            const tier = tile ? levelToTier(Math.min(tile.level, 11)) : 0
+            const isMoving = tile ? animTiles.has(tile.id) : false
+            return (
+              <div
+                key={`${r},${c}`}
+                data-cell={`${r},${c}`}
+                className={`relative flex aspect-square items-center justify-center rounded-xl text-2xl transition-all ${
+                  tile ? TIER_CLASS[tier] : 'bg-white/[0.02] ring-1 ring-white/[0.04]'
+                } ${isMoving ? 'tile-slide-in' : ''}`}
+                style={{
+                  // 觉醒专属光晕
+                  boxShadow: tile && tile.level > 11 ? '0 0 20px rgba(251,146,60,0.6), inset 0 0 12px rgba(251,146,60,0.2)' : undefined,
+                }}
+              >
+                {tile ? (
+                  <>
+                    <span className={`drop-shadow ${tile.level > 11 ? 'animate-pulse' : ''}`} style={{ fontSize: tile.level > 11 ? '36px' : '32px' }}>
+                      {getEmoji(tile)}
+                    </span>
+                    <span
+                      className={`absolute bottom-1 right-1 rounded-full px-1.5 py-0.5 text-[9px] font-bold ${
+                        tile.level > 11 ? 'bg-orange-500/80 text-white' : 'bg-black/50 text-white/70'
+                      }`}
+                    >
+                      {tile.level <= 11 ? `Lv.${tile.level}` : getLevelLabel(tile.level).replace('醒·', '醒')}
+                    </span>
+                    {tile.level > 11 && (
+                      <div className="pointer-events-none absolute inset-0 rounded-xl level-ray" style={{ background: 'radial-gradient(circle, rgba(251,191,36,0.6), transparent 60%)' }} />
+                    )}
+                  </>
+                ) : null}
+              </div>
+            )
+          }),
+        )}
+      </div>
+
+      {/* 滑动提示 */}
+      <div className="mt-2 flex items-center justify-center gap-2 text-[10px] text-white/30">
+        <span>⇆</span>
+        <span>滑动合并 · 方向键 / 触屏</span>
+        <span className="ml-2 rounded-full bg-white/5 px-1.5 py-0.5 font-mono">C×{bestCombo}</span>
+      </div>
+    </div>
+  )
+}
+
+function eventScreenPos(
+  pos: [number, number],
+  container: HTMLElement | null,
+): { x: number; y: number } {
+  if (!container) return { x: window.innerWidth / 2, y: window.innerHeight / 2 }
+  const r = container.getBoundingClientRect()
+  const cellW = r.width / GRID_SIZE
+  const cellH = (r.height - 32) / GRID_SIZE
+  return {
+    x: r.left + pos[1] * cellW + cellW / 2,
+    y: r.top + pos[0] * cellH + cellH / 2,
+  }
+}

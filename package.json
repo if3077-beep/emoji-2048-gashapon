@@ -1,0 +1,34 @@
+{
+  "name": "emoji-2048-gashapon",
+  "private": true,
+  "version": "0.3.0",
+  "type": "module",
+  "homepage": "https://if3077-beep.github.io/emoji-2048-gashapon",
+  "description": "扭蛋机 × 2048 × 表情包 创意合成游戏 — 12 大生态区 + 滑动合并 + 觉醒循环 + 宠物进化 + 季节活动 + 暴击爽感",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview --port 5180",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "gsap": "^3.12.5",
+    "howler": "^2.2.4",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "zustand": "^4.5.4"
+  },
+  "devDependencies": {
+    "@types/howler": "^2.2.11",
+    "@types/react": "^18.3.5",
+    "@types/react-dom": "^18.3.0",
+    "@vitejs/plugin-react": "^4.3.1",
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.4.45",
+    "tailwindcss": "^3.4.10",
+    "typescript": "^5.5.4",
+    "vite": "^5.4.3",
+    "vitest": "^2.0.5"
+  }
+}

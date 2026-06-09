@@ -1,0 +1,174 @@
+/**
+ * 主页 Tab（v0.3：季节buff + 主线任务条）
+ * - 当前主题卡片 + "切换主题"入口
+ * - CoinDisplay 数字滚动
+ * - 季节 / 幸运区 / 暴击 buff 提示
+ * - 扭蛋机 + 网格 + 任务
+ */
+import { Gashapon } from '@/components/gashapon/Gashapon'
+import { MergeGrid } from '@/components/grid/MergeGrid'
+import { CoinDisplay } from '@/components/ui/CoinDisplay'
+import { useGameStore } from '@/store/gameStore'
+import { useUiStore } from '@/store/uiStore'
+import { ZONES, MAX_LEVEL } from '@/data/emoji-trees'
+import { computeBuff, seasonEmoji, seasonLabel } from '@/lib/season'
+
+export function HomeTab() {
+  const coins = useGameStore(s => s.coins)
+  const currentZone = useGameStore(s => s.currentZone)
+  const dailyTasks = useGameStore(s => s.dailyTasks)
+  const claimTask = useGameStore(s => s.claimTask)
+  const totalPulls = useGameStore(s => s.totalPulls)
+  const maxLevel = useGameStore(s => s.maxLevel)
+  const zoneMax = useGameStore(s => s.zoneMax)
+  const combo = useGameStore(s => s.combo)
+  const collection = useGameStore(s => s.collection)
+
+  const openZoneGallery = useUiStore(s => s.openZoneGallery)
+
+  const zone = ZONES[currentZone]
+  const currentZoneCol = collection[currentZone] ?? []
+  const clearedCount = Object.values(zoneMax).filter(v => v >= MAX_LEVEL).length
+  const totalZones = Object.keys(zoneMax).length
+
+  // v0.3：buff
+  const buff = computeBuff(currentZone)
+
+  return (
+    <div className="flex w-full flex-col items-center gap-3 px-3 py-2">
+      {/* 货币 + 最高 + Combo */}
+      <div className="flex w-full max-w-[400px] items-center gap-2">
+        <div className="glass flex flex-1 items-center gap-2 rounded-full px-3 py-1.5">
+          <span className="text-lg">🪙</span>
+          <CoinDisplay value={coins} bumpKey={coins} className="text-base" />
+          <span className="text-[10px] text-white/30">扭蛋币</span>
+        </div>
+        <div className="glass flex items-center gap-1.5 rounded-full px-2.5 py-1.5">
+          <span className="text-[10px] text-white/40">最高</span>
+          <span className="font-mono text-sm font-bold text-ember-400">Lv.{maxLevel}</span>
+        </div>
+        {combo > 1 && (
+          <div className="glass flex items-center gap-1 rounded-full px-2.5 py-1.5">
+            <span className="text-[10px] text-gold-400">×{combo}</span>
+          </div>
+        )}
+      </div>
+
+      {/* v0.3 季节 buff 条 */}
+      <div
+        className="flex w-full max-w-[400px] items-center justify-between rounded-full px-3 py-1.5 text-[11px]"
+        style={{
+          background: 'linear-gradient(90deg, rgba(251,191,36,0.12), rgba(167,139,250,0.12))',
+          border: '1px solid rgba(251,191,36,0.2)',
+        }}
+      >
+        <div className="flex items-center gap-1.5">
+          <span>{seasonEmoji(buff.season)}</span>
+          <span className="text-white/70">今日 <span className="text-gold-400 font-bold">{seasonLabel(buff.season)}季</span></span>
+          <span className="text-white/30">·</span>
+          <span>幸运区 <span className="text-emerald-400">{buff.luckyZoneName}</span></span>
+        </div>
+        {buff.multiplier > 1 ? (
+          <span className="rounded-full bg-gold-500/30 px-2 py-0.5 font-mono text-[10px] font-bold text-gold-300">
+            ×{buff.multiplier}
+          </span>
+        ) : (
+          <span className="text-[10px] text-white/30">5% 暴击</span>
+        )}
+      </div>
+
+      {/* 当前主题卡片 + 切换入口 */}
+      <button
+        onClick={openZoneGallery}
+        className="touch-target flex w-full max-w-[400px] items-center gap-3 rounded-2xl p-3 text-left transition-all active:scale-[0.99]"
+        style={{
+          background: zone.bg,
+          border: `1px solid ${zone.color}55`,
+          boxShadow: `0 0 18px ${zone.glow}`,
+        }}
+      >
+        <div
+          className="flex h-12 w-12 items-center justify-center rounded-xl text-2xl"
+          style={{ background: 'rgba(255,255,255,0.06)' }}
+        >
+          {zone.icon}
+        </div>
+        <div className="flex-1 leading-tight">
+          <div className="flex items-center gap-1.5">
+            <span className="text-sm font-bold" style={{ color: zone.color }}>
+              {zone.name}
+            </span>
+            <span className="text-[9px] text-white/40">· {zone.subtitle}</span>
+          </div>
+          <div className="mt-1 flex items-center gap-2 text-[10px] text-white/50">
+            <span>已收集 {currentZoneCol.length}/{MAX_LEVEL}</span>
+            <span className="text-white/20">·</span>
+            <span>{clearedCount}/{totalZones} 通关</span>
+          </div>
+        </div>
+        <div
+          className="flex h-9 w-9 items-center justify-center rounded-full text-lg"
+          style={{ background: 'rgba(255,255,255,0.05)' }}
+        >
+          🗺️
+        </div>
+      </button>
+
+      {/* 扭蛋机 */}
+      <Gashapon />
+
+      {/* 网格 */}
+      <MergeGrid />
+
+      {/* 任务 */}
+      <DailyTasks tasks={dailyTasks} onClaim={claimTask} />
+
+      {/* 统计 */}
+      <div className="w-full max-w-[400px] text-center text-[10px] text-white/25">
+        累计扭蛋 {totalPulls} 次 · 最佳连击 {useGameStore.getState().bestCombo}
+      </div>
+    </div>
+  )
+}
+
+function DailyTasks({ tasks, onClaim }: { tasks: any[]; onClaim: (id: string) => void }) {
+  const completed = tasks.filter(t => t.completed).length
+  return (
+    <div className="w-full max-w-[400px] glass rounded-2xl p-3">
+      <div className="mb-2 flex items-center justify-between text-xs">
+        <span className="text-white/70">📜 今日任务</span>
+        <span className="text-[10px] text-white/30">{completed}/{tasks.length} 已完成</span>
+      </div>
+      <div className="flex flex-col gap-1.5">
+        {tasks.map(t => (
+          <div key={t.id} className="flex items-center gap-2 text-xs">
+            <div className="flex-1">
+              <div className={t.completed ? 'line-through text-white/40' : 'text-white/80'}>
+                {t.desc}
+              </div>
+              <div className="h-1 overflow-hidden rounded-full bg-white/5">
+                <div
+                  className="h-full transition-all"
+                  style={{
+                    width: `${Math.min(100, (t.progress / t.target) * 100)}%`,
+                    background: t.completed ? 'linear-gradient(90deg, #86efac, #a3e635)' : 'rgba(255,255,255,0.2)',
+                  }}
+                />
+              </div>
+            </div>
+            <div className="font-mono text-[10px] text-white/40">{t.progress}/{t.target}</div>
+            {t.completed && !t.claimed && (
+              <button
+                onClick={() => onClaim(t.id)}
+                className="touch-target rounded-full bg-gold-500 px-2 py-0.5 text-[10px] font-bold text-ink-900"
+              >
+                +{t.reward}🪙
+              </button>
+            )}
+            {t.claimed && <span className="text-[10px] text-white/30">已领</span>}
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}

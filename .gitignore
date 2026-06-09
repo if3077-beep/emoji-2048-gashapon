@@ -1,0 +1,16 @@
+# Logs
+node_modules
+dist
+.DS_Store
+*.log
+.env
+.env.local
+.vscode
+coverage
+.vite
+# TypeScript incremental
+*.tsbuildinfo
+# Editor
+.idea
+*.swp
+.DS_Store
