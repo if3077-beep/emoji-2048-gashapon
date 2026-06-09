@@ -18,6 +18,9 @@ import { ZoneGallery } from '@/components/collection/ZoneGallery'
 import { CheckinPanel } from '@/components/ui/CheckinPanel'
 import { ComebackModal } from '@/components/ui/ComebackModal'
 import { StatsPanel } from '@/components/ui/StatsPanel'
+import { AchievementsPanel } from '@/components/ui/AchievementsPanel'
+import { OutfitsPanel } from '@/components/ui/OutfitsPanel'
+import { SettingsPanel } from '@/components/ui/SettingsPanel'
 
 const TABS = [
   { id: 'home' as const, icon: '🏠', label: '主页' },
@@ -70,7 +73,7 @@ export default function App() {
           <span className="text-lg">🌟</span>
           <div className="flex flex-col leading-tight">
             <span className="text-sm font-bold text-white/90">扭蛋 2048</span>
-            <span className="text-[9px] text-white/30">合成生态 v0.4</span>
+            <span className="text-[9px] text-white/30">合成生态 v0.5</span>
           </div>
         </div>
         <div className="text-[10px] text-white/30">
@@ -115,6 +118,9 @@ export default function App() {
       <CheckinPanel />
       <ComebackModal />
       <StatsPanel />
+      <AchievementsPanel />
+      <OutfitsPanel />
+      <SettingsPanel />
     </div>
   )
 }

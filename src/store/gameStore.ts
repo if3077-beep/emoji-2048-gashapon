@@ -36,6 +36,7 @@ import {
   type CheckinState,
   type Challenge,
 } from '@/lib/checkin'
+import type { OutfitId } from '@/lib/outfits'
 
 interface GameState {
   // 基础

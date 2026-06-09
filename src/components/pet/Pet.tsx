@@ -11,6 +11,10 @@ import { useGameStore } from '@/store/gameStore'
 import { useUiStore } from '@/store/uiStore'
 import { sfx, resumeAudio } from '@/lib/audio'
 import { feedPet, petPet, personalityBehavior, type Pet } from '@/lib/pet-gen'
+import { OUTFITS, type OutfitId } from '@/lib/outfits'
+
+const getOutfitOverlay = (id: OutfitId): string =>
+  OUTFITS.find(o => o.id === id)?.overlay ?? ''
 
 interface PetState {
   x: number
@@ -216,6 +220,15 @@ export function Pet() {
         >
           <span className="text-4xl" style={{ fontSize: `${28 * pet.sizeScale}px` }}>{pet.speciesEmoji}</span>
         </div>
+        {/* 装扮 overlay（v0.5） */}
+        {(pet as any).outfit && (
+          <div
+            className="absolute -top-1 left-1/2 -translate-x-1/2"
+            style={{ fontSize: `${20 * pet.sizeScale}px`, pointerEvents: 'none' }}
+          >
+            {getOutfitOverlay((pet as any).outfit)}
+          </div>
+        )}
         {/* 名字 */}
         <div className="absolute -top-5 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-black/60 px-2 py-0.5 text-[9px] text-white/70 ring-1 ring-white/10">
           {pet.name} · Lv.{pet.level}

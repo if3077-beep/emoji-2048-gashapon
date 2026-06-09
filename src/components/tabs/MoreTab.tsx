@@ -136,6 +136,31 @@ export function MoreTab() {
         <div className="mt-1 text-[10px] text-white/30">数据来源：国内公益 API</div>
       </div>
 
+      {/* v0.5 入口：装扮/成就/设置 */}
+      <div className="grid grid-cols-3 gap-2">
+        <button
+          onClick={() => useUiStore.getState().openOutfits()}
+          className="touch-target glass flex flex-col items-center gap-1 rounded-2xl p-3 active:scale-95"
+        >
+          <span className="text-2xl">👗</span>
+          <span className="text-[10px] text-white/70">装扮</span>
+        </button>
+        <button
+          onClick={() => useUiStore.getState().openAchievements()}
+          className="touch-target glass flex flex-col items-center gap-1 rounded-2xl p-3 active:scale-95"
+        >
+          <span className="text-2xl">🏆</span>
+          <span className="text-[10px] text-white/70">成就</span>
+        </button>
+        <button
+          onClick={() => useUiStore.getState().openSettings()}
+          className="touch-target glass flex flex-col items-center gap-1 rounded-2xl p-3 active:scale-95"
+        >
+          <span className="text-2xl">⚙️</span>
+          <span className="text-[10px] text-white/70">设置</span>
+        </button>
+      </div>
+
       {/* 设置 */}
       <div className="glass rounded-2xl p-3">
         <div className="text-xs text-white/50 mb-2">⚙️ 设置</div>
@@ -174,7 +199,7 @@ export function MoreTab() {
       </div>
 
       <div className="pb-2 text-center text-[10px] text-white/20">
-        扭蛋 2048 · 合成生态 · v0.1
+        扭蛋 2048 · 合成生态 · v0.5
       </div>
     </div>
   )
