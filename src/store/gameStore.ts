@@ -157,6 +157,12 @@ interface GameState {
   trySpawnOne: () => boolean
   /** v8.2 满格自动救济：主动清 1 颗 Lv.1-2 喘息（返回清除数量 0/1） */
   autoRelief: () => number
+  /**
+   * v9.0 刷新网格：保留 Lv.4+ 和觉醒形态，回退其他为空 + spawn 2-3 个 Lv.1
+   * - cost: 主动刷新的费用（默认 5🪙，死局强救济传 0）
+   * - 返回实际清除的数量
+   */
+  refreshGrid: (cost?: number) => number
   /** v2.0：死局检测（满格 + 无任何合成） */
   checkDeadlock: () => boolean
   /** v2.0：死局兜底（清 Lv.1-3，保留 Lv.4+，奖 50 🪙） */
@@ -460,6 +466,10 @@ export const useGameStore = create<GameState>((set, get) => ({
       if (cleared > 0) {
         try { (require('@/store/uiStore') as typeof import('@/store/uiStore')).useUiStore.getState().pushToast(`🪦 满格自动清理 ${cleared} 颗低等级`, '🪦', 1) } catch {}
         get().trySpawnOne()  // 再 spawn
+      } else {
+        // v9.0 强救济：autoRelief 无可清时（高等级全填满）→ 死局救济免费刷新
+        const refreshed = get().refreshGrid(0)
+        if (refreshed > 0) get().trySpawnOne()
       }
     }
     // v2.0：每次 slide 后检测死局
@@ -857,6 +867,72 @@ export const useGameStore = create<GameState>((set, get) => ({
 
   // v8.2 init 占位：避免序列化/初始化时缺字段
   autoRelief: () => 0,
+
+  /**
+   * v8.2 满格自动救济：主动清 1 颗 Lv.1-2 随机，给玩家喘息
+   * - 满格 + spawn 失败时由 slide 末尾调用
+   * - 优先清 Lv.1，再清 Lv.2
+   * - 返回清除数量（0/1）
+   */
+  _v8autoRelief: () => {
+    const state = get()
+    if (!isFull(state.grid)) return 0
+    // 找 Lv.1 / Lv.2 候选位置
+    const lowLevelCells: Array<[number, number]> = []
+    for (let r = 0; r < state.grid.length; r++) {
+      for (let c = 0; c < state.grid[r].length; c++) {
+        const t = state.grid[r][c]
+        if (t && t.level <= 2) lowLevelCells.push([r, c])
+      }
+    }
+    if (lowLevelCells.length === 0) return 0
+    const target = lowLevelCells[Math.floor(Math.random() * lowLevelCells.length)]
+    const newGrid = state.grid.map(row => row.slice())
+    newGrid[target[0]][target[1]] = null
+    set({ grid: newGrid })
+    return 1
+  },
+
+  /**
+   * v9.0 刷新网格：保留 Lv.4+ 和觉醒形态，回退其他为空 + spawn 2-3 个 Lv.1
+   * - cost: 主动刷新费用（默认 5🪙，死局强救济传 0）
+   * - 返回实际清除的 tile 数量
+   */
+  refreshGrid: (cost = 5) => {
+    const state = get()
+    if (state.coins < cost) {
+      try { (require('@/store/uiStore') as typeof import('@/store/uiStore')).useUiStore.getState().pushToast('🪙 扭蛋币不足，无法刷新', '🪙', 0) } catch {}
+      return 0
+    }
+    // 保留 Lv.4+ 觉醒，其他清空
+    const newGrid = state.grid.map(row =>
+      row.map(cell => (cell && cell.level >= 4 ? cell : null))
+    )
+    // spawn 2-3 个 Lv.1
+    const empty: Array<[number, number]> = []
+    for (let r = 0; r < newGrid.length; r++) {
+      for (let c = 0; c < newGrid[r].length; c++) {
+        if (!newGrid[r][c]) empty.push([r, c])
+      }
+    }
+    const spawnN = Math.min(empty.length, 2 + Math.floor(Math.random() * 2))  // 2 or 3
+    for (let i = 0; i < spawnN; i++) {
+      if (empty.length === 0) break
+      const idx = Math.floor(Math.random() * empty.length)
+      const [r, c] = empty.splice(idx, 1)[0]
+      const cap = drawCapsule(state.currentZone, state.pet?.level ?? 0)
+      newGrid[r][c] = { id: nextId(), zone: state.currentZone, level: cap.level, bornAt: Date.now() }
+    }
+    set({ grid: newGrid, coins: state.coins - cost })
+    // v9.2 触发 UI 刷新过场
+    try { (require('@/store/uiStore') as typeof import('@/store/uiStore')).useUiStore.getState().bumpRefresh() } catch {}
+    if (cost > 0) {
+      try { (require('@/store/uiStore') as typeof import('@/store/uiStore')).useUiStore.getState().pushToast(`🔄 刷新网格 -${cost}🪙`, '🔄', 0) } catch {}
+    } else {
+      try { (require('@/store/uiStore') as typeof import('@/store/uiStore')).useUiStore.getState().pushToast('🪦 死局救济：免费刷新网格', '🪦', 1) } catch {}
+    }
+    return state.grid.flat().filter(t => t && t.level < 4).length
+  },
 
   /**
    * 死局检测：满格 + 4 方向无任何可合成

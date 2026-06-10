@@ -64,6 +64,15 @@ export function DeadlockPanel() {
           🧹 兜底清场（+50🪙）
         </button>
         <button
+          onClick={() => {
+            useGameStore.getState().refreshGrid(0)
+            try { sfx.crit() } catch {}
+          }}
+          className="touch-target flex-1 rounded-full bg-gradient-to-r from-violet-500 to-cyan-500 py-1.5 text-xs font-bold text-white active:scale-95"
+        >
+          🔄 刷新（免费）
+        </button>
+        <button
           onClick={dismiss}
           className="touch-target rounded-full bg-white/5 px-3 py-1.5 text-[10px] text-white/60 active:scale-95"
           style={{ border: '1px solid rgba(255,255,255,0.1)' }}

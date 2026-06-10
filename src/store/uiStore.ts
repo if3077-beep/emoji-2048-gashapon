@@ -67,10 +67,13 @@ interface UiState {
   awakenBurst: AwakenBurst | null
   triggerAwakenBurst: (groups: MatchGroup[], longest: number) => void
   clearAwakenBurst: () => void
-  // v6.2 稀有时刻：合成 Lv.10+ 触发的全屏文字
+  // v6.2 稀有时刻：合成 Lv.10+/** v7.2 稀有时刻全屏文字 */
   rareMoment: { emoji: string; level: number; at: number } | null
   triggerRareMoment: (emoji: string, level: number) => void
   clearRareMoment: () => void
+  /** v9.2 刷新网格过场计数（UI 监听变化做 flash 0.4s） */
+  refreshTick: number
+  bumpRefresh: () => void
 }
 
 let _toastId = 0
@@ -165,4 +168,7 @@ export const useUiStore = create<UiState>((set) => ({
     }, 1600)
   },
   clearRareMoment: () => set({ rareMoment: null }),
+  // v9.2 刷新网格过场
+  refreshTick: 0,
+  bumpRefresh: () => set(s => ({ refreshTick: s.refreshTick + 1 })),
 }))

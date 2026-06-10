@@ -38,6 +38,7 @@ export function HomeTab() {
 
   const openZoneGallery = useUiStore(s => s.openZoneGallery)
   const openCheckin = useUiStore(s => s.openCheckin)
+  const refreshGrid = useGameStore(s => s.refreshGrid)
   const openStats = useUiStore(s => s.openStats)
   const setTab = useUiStore(s => s.setTab)
 
@@ -52,21 +53,22 @@ export function HomeTab() {
   const weekend = isWeekendDouble()
 
   return (
-    <div className="flex w-full flex-col items-center gap-1.5 px-3 py-1.5">
-      {/* v8.1 主页顶部 emoji 堆叠彻底解决：3 行 → 3 行但更紧凑 */}
-      {/* 货币条 v8.1：4 chip 极简 [🪙 N] [🎁 7] [📊] [👑 Lv.X]，combo 移到顶栏右侧外 */}
+    <div className="flex w-full flex-col items-center gap-1 px-3 py-1">
+      {/* v9.1 上方堆叠彻底解决：货币条 2 chip + 签到 + 刷新 */}
       <div className="flex w-full max-w-[400px] items-center gap-1">
         <div className="glass flex flex-1 items-center gap-1 rounded-full px-2 py-1">
           <span className="text-sm">🪙</span>
           <CoinDisplay value={coins} bumpKey={coins} className="text-xs font-bold" />
-          <span className="text-[8px] text-white/30">扭蛋币</span>
+        </div>
+        <div className="glass flex items-center gap-0.5 rounded-full px-1.5 py-1" title="最高等级">
+          <span className="text-[9px]">👑</span>
+          <span className="font-mono text-[9px] font-bold text-ember-400">Lv.{maxLevel}</span>
         </div>
         <button
           onClick={openCheckin}
           className="glass relative flex items-center gap-0.5 rounded-full px-1.5 py-1 active:scale-95"
-          style={{
-            background: checkedToday ? 'rgba(34,197,94,0.2)' : 'rgba(251,191,36,0.15)',
-          }}
+          style={{ background: checkedToday ? 'rgba(34,197,94,0.2)' : 'rgba(251,191,36,0.15)' }}
+          title="签到"
         >
           <span className="text-xs">🎁</span>
           <span className="font-mono text-[9px] font-bold" style={{ color: checkedToday ? '#86efac' : '#fbbf24' }}>
@@ -77,16 +79,28 @@ export function HomeTab() {
           )}
         </button>
         <button
+          onClick={() => {
+            // v9.0 主动刷新：5🪙 保留 Lv.4+
+            if (coins < 5) {
+              useUiStore.getState().pushToast('🪙 扭蛋币不足', '🪙', 0)
+              return
+            }
+            refreshGrid(5)
+          }}
+          className="glass flex items-center gap-0.5 rounded-full px-1.5 py-1 active:scale-95"
+          style={{ background: 'rgba(167,139,250,0.15)' }}
+          title="刷新网格（5🪙 保留 Lv.4+）"
+        >
+          <span className="text-xs">🔄</span>
+          <span className="font-mono text-[9px] font-bold text-violet-200">5</span>
+        </button>
+        <button
           onClick={openStats}
           className="glass flex items-center gap-0.5 rounded-full px-1.5 py-1 active:scale-95"
           title="统计"
         >
           <span className="text-xs">📊</span>
         </button>
-        <div className="glass flex items-center gap-0.5 rounded-full px-1.5 py-1" title="最高等级">
-          <span className="text-[9px] text-white/40">👑</span>
-          <span className="font-mono text-[9px] font-bold text-ember-400">Lv.{maxLevel}</span>
-        </div>
       </div>
 
       {/* v8.1 季节buff：1 行 1 chip "详情 ⌄" 可展开（默认收起，避免 emoji 堆叠） */}
@@ -467,34 +481,24 @@ function DailyFortune({ totalPulls, currentZone }: { totalPulls: number; current
 }
 
 /**
- * v8.1 季节 buff 条：1 行 1 chip 默认收起，点 ⌄ 展开 5 chip（避免 emoji 堆叠）
+ * v9.1 季节 buff 条：1 行 3 chip（季+幸运+倍率）默认显示，点 ⌄ 弹 modal 详情
  */
 function BuffStrip({ buff, weekend }: { buff: any; weekend: boolean }) {
   const [open, setOpen] = useState(false)
   return (
-    <div
-      className="flex w-full max-w-[400px] flex-col gap-1 rounded-2xl px-2 py-1 text-[9px]"
-      style={{
-        background: 'linear-gradient(90deg, rgba(167,139,250,0.10), rgba(96,165,250,0.10))',
-        border: '1px solid rgba(167,139,250,0.18)',
-      }}
-    >
-      <button
-        onClick={() => setOpen(o => !o)}
-        className="flex w-full items-center gap-1.5"
+    <>
+      <div
+        className="flex w-full max-w-[400px] items-center gap-1 rounded-full px-2 py-1 text-[9px]"
+        style={{
+          background: 'linear-gradient(90deg, rgba(167,139,250,0.10), rgba(96,165,250,0.10))',
+          border: '1px solid rgba(167,139,250,0.18)',
+        }}
       >
-        <span className="rounded-full bg-white/[0.06] px-1 text-[10px]">{seasonEmoji(buff.season)}</span>
-        <span className="text-white/70">
-          <span className="text-violet-300 font-bold">{seasonLabel(buff.season)}季</span>
-        </span>
+        <span className="text-[10px]">{seasonEmoji(buff.season)}</span>
+        <span className="text-violet-300 font-bold">{seasonLabel(buff.season)}季</span>
         <span className="rounded-full bg-emerald-500/15 px-1 text-emerald-300">
           🍀 {buff.luckyZoneName}
         </span>
-        {weekend && (
-          <span className="rounded-full bg-rose-500/20 px-1 text-rose-300 font-bold animate-pulse">
-            🎉 双倍
-          </span>
-        )}
         {buff.multiplier > 1 ? (
           <span className="rounded-full bg-violet-500/30 px-1 font-mono font-bold text-violet-300">
             ×{buff.multiplier}
@@ -502,18 +506,67 @@ function BuffStrip({ buff, weekend }: { buff: any; weekend: boolean }) {
         ) : (
           <span className="rounded-full bg-white/[0.04] px-1 text-white/40">5%暴击</span>
         )}
-        <span className={`ml-auto text-white/30 transition-transform ${open ? 'rotate-180' : ''}`}>⌄</span>
-      </button>
+        <button
+          onClick={() => setOpen(true)}
+          className="ml-auto text-white/40"
+          title="查看详情"
+        >
+          ⌄
+        </button>
+      </div>
       {open && (
-        <div className="flex flex-wrap items-center gap-1.5 text-[9px] text-white/60 pt-0.5">
-          <span>🌸 春</span><span>·</span>
-          <span>☀️ 夏</span><span>·</span>
-          <span>🍂 秋</span><span>·</span>
-          <span>❄️ 冬</span><span>·</span>
-          <span className="rounded-full bg-white/[0.04] px-1 text-white/40">暴击 5%</span>
-          <span className="rounded-full bg-white/[0.04] px-1 text-white/40">周末双倍</span>
+        <div
+          className="fixed inset-0 z-40 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+          onClick={() => setOpen(false)}
+        >
+          <div
+            className="w-[280px] rounded-2xl p-3"
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: 'linear-gradient(165deg, rgba(20,15,40,0.95) 0%, rgba(30,20,50,0.95) 100%)',
+              border: '1px solid rgba(167,139,250,0.4)',
+              boxShadow: '0 0 30px rgba(167,139,250,0.3)',
+            }}
+          >
+            <div className="mb-2 text-center text-[11px] font-bold text-violet-200">🔮 今日运势详情</div>
+            <div className="space-y-1.5 text-[10px] text-white/70">
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px]">{seasonEmoji(buff.season)}</span>
+                <span>当前 <span className="font-bold text-violet-300">{seasonLabel(buff.season)}季</span></span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span>🍀</span>
+                <span>幸运主题：<span className="font-bold text-emerald-300">{buff.luckyZoneName}</span></span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span>🎲</span>
+                <span>暴击率：<span className="font-bold text-violet-300">5%</span>（基础）</span>
+              </div>
+              {weekend && (
+                <div className="flex items-center gap-1.5">
+                  <span>🎉</span>
+                  <span className="text-rose-300 font-bold">周末双倍奖励</span>
+                </div>
+              )}
+              {buff.multiplier > 1 ? (
+                <div className="flex items-center gap-1.5">
+                  <span>✨</span>
+                  <span>倍率：<span className="font-mono font-bold text-violet-300">×{buff.multiplier}</span></span>
+                </div>
+              ) : null}
+              <div className="mt-2 border-t border-white/10 pt-2 text-[9px] text-white/50">
+                💡 幸运主题在合成 / 扭蛋 / 暴击时都享受加成
+              </div>
+            </div>
+            <button
+              onClick={() => setOpen(false)}
+              className="mt-3 w-full rounded-full bg-white/10 py-1.5 text-[10px] font-bold text-white/80 active:scale-95"
+            >
+              关闭
+            </button>
+          </div>
         </div>
       )}
-    </div>
+    </>
   )
 }

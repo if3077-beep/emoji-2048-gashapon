@@ -1,7 +1,7 @@
 # BUG_AUDIT.md — emoji-2048-gashapon
 
-> 最后自查：2026-06-10（v8 push 后）
-> 17 个 GitHub Pages 版本（v0.4 → v8）已 push，37 测试 0 错误，build 131.89 KB gzip。
+> 最后自查：2026-06-10（v9 push 后）
+> 18 个 GitHub Pages 版本（v0.4 → v9）已 push，37 测试 0 错误，build 132.67 KB gzip。
 
 ## 1. 用户原话反馈 → 修复/打补丁映射
 
@@ -38,6 +38,8 @@
 | "图鉴百科接口加载不出来"（国内） | v8.0 | ✅ 已修 | `wiki.ts` 新增 `fetchWithTimeout`（AbortController + 4s 超时）+ `StoryResult.offline` 标识 + 本地 `getLoreSnippet` 兜底（node.lore + zone.flavor）+ CollectionView 加 📴 离线 toast 浮层（"国内环境，API 暂不可用，已用本地故事"，1.5s）+ 来源 chip 显示"📚 本地"+"📴 离线" |
 | "最上方 emoji 堆叠没解决" | v8.1 | ✅ 已重做 | **货币条**：1 行 4 chip 极简 [🪙 数字] [🎁 7] [📊] [👑 Lv.X]（去掉"最高"和"×combo"2 chip）；**BuffStrip 新组件**：季节buff 5 chip 改 1 行 1 chip + ⌄ 展开按钮（默认收起避免拥堵）；**DailyFortune**：6 圆徽章+·+数字 拥堵 → 改 1 进度条 + 1 emoji 数字（"下一徽章 🎁 label [进度] N/M"）|
 | "2048 死局可能依然在" | v8.2 | ✅ 已加自动救济 | gameStore 新增 `autoRelief()`：满格 + spawn 失败时主动清 1 颗 Lv.1-2 随机（保留 Lv.3+）+ 再 spawn 1 次 + pushToast "🪦 满格自动清理 1 颗低等级"；**DeadlockPanel**：紫红 box-shadow 0.6s 闪烁动画 `deadlockPulse`（rgba(220,38,38,0.25)↔0.6）|
+| "还是会都填满卡死 看看能不能加个刷新按钮" | v9.0 | ✅ 已加 | gameStore 新增 `refreshGrid(cost=5)`：扣币 → 保留 Lv.4+ 觉醒 → 其他清空 → spawn 2-3 个 Lv.1 + bornAt 字段；**强救济**：autoRelief 返回 0 时（无可清低等级）自动调 refreshGrid(0) 免费；**双入口**：① 货币条 [🔄 5] 按钮（-5🪙 主动）② DeadlockPanel 第三个 [🔄 刷新（免费）] 紫青渐变按钮；提示文案：扣费"🔄 刷新网格 -5🪙" / 救济"🪦 死局救济：免费刷新网格" |
+| "上方堆叠还在" | v9.1 | ✅ 已彻底解决 | 货币条：5 chip 紧凑化（每 chip gap-0.5 + px-1.5 + 字号 text-xs/text-[9px]）；BuffStrip：**5 chip flex-wrap 展开 → 1 行 3 chip + ⌄ 按钮弹 modal 详情**（modal 280px 紫红渐变背景 + 季/幸运/暴击/周末/倍率 5 行详情 + 💡 提示 + 关闭按钮，避免主区域堆叠）|
 
 ## 2. 审计到的所有 bug 与修复
 
