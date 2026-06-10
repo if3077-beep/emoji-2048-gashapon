@@ -186,6 +186,17 @@ export function Pet() {
 
   const cssColor = `hsl(${pet.hue} ${pet.saturation}% ${pet.lightness}%)`
 
+  // v1.1 心情计算：基于好感度（affection）+ 等级（level）+ form
+  const mood = (() => {
+    const a = pet.affection
+    if (a >= 95) return { emoji: '🥰', label: '深爱' }
+    if (a >= 80) return { emoji: '😋', label: '幸福' }
+    if (a >= 60) return { emoji: '😊', label: '开心' }
+    if (a >= 40) return { emoji: '😐', label: '平静' }
+    if (a >= 20) return { emoji: '😟', label: '饿饿' }
+    return { emoji: '😢', label: '难过' }
+  })()
+
   return (
     <div
       ref={ref}
@@ -229,9 +240,9 @@ export function Pet() {
             {getOutfitOverlay((pet as any).outfit)}
           </div>
         )}
-        {/* 名字 */}
+        {/* 名字 + 心情 */}
         <div className="absolute -top-5 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-black/60 px-2 py-0.5 text-[9px] text-white/70 ring-1 ring-white/10">
-          {pet.name} · Lv.{pet.level}
+          {pet.name} · Lv.{pet.level} <span className="ml-0.5">{mood.emoji}</span>
         </div>
         {/* 爱心 */}
         {s.action === 'love' && (

@@ -26,6 +26,7 @@ import { LeaderboardPanel } from '@/components/ui/LeaderboardPanel'
 import { RandomEventModal } from '@/components/ui/RandomEventModal'
 import { EventBuffBadge } from '@/components/ui/EventBuffBadge'
 import { SynergiesPanel } from '@/components/ui/SynergiesPanel'
+import { AchievementUnlockModal } from '@/components/ui/AchievementUnlockModal'
 
 const TABS = [
   { id: 'home' as const, icon: '🏠', label: '主页' },
@@ -134,6 +135,7 @@ export default function App() {
       <RandomEventModal />
       <EventBuffBadge />
       <SynergiesPanel />
+      <AchievementUnlockModal />
     </div>
   )
 }

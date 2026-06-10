@@ -119,6 +119,11 @@ export function ZoneGallery() {
                     </div>
                   </div>
 
+                  {/* v1.1 主题故事（一句话简介） */}
+                  <div className="text-[9px] leading-snug text-white/45 line-clamp-2">
+                    {z.description}
+                  </div>
+
                   <div className="flex w-full items-center justify-between text-[10px]">
                     <span className={stateInfo.color}>{stateInfo.text}</span>
                     <span className="font-mono text-white/40">

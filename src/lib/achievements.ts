@@ -114,3 +114,22 @@ export const computeAchievementProgress = (a: Achievement, ctx: AchievementCtx):
   const p = Math.min(a.target, a.check(ctx))
   return { progress: p, done: p >= a.target }
 }
+
+/**
+ * v1.1 成就解锁检测：比较"上一次已解锁列表"和"当前 ctx 应解锁列表"，返回新增的成就
+ * - 用于在 merge/slide/autoMerge 后调用，把新解锁的成就弹祝贺
+ */
+export function detectUnlockedAchievements(
+  ctx: AchievementCtx,
+  previouslyUnlocked: string[],
+): Achievement[] {
+  const previouslySet = new Set(previouslyUnlocked)
+  const out: Achievement[] = []
+  ACHIEVEMENTS.forEach(a => {
+    if (previouslySet.has(a.id)) return
+    if (computeAchievementProgress(a, ctx).done) {
+      out.push(a)
+    }
+  })
+  return out
+}

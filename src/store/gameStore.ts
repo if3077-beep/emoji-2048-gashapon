@@ -39,6 +39,7 @@ import {
 } from '@/lib/checkin'
 import type { OutfitId } from '@/lib/outfits'
 import { rollRandomEvent } from '@/lib/events'
+import { detectUnlockedAchievements, type Achievement } from '@/lib/achievements'
 
 interface GameState {
   // 基础
@@ -95,6 +96,14 @@ interface GameState {
   /** 本次扭蛋是否免单（gacha_frenzy 触发后） */
   freeGachaPending: boolean
 
+  // v1.1 成就
+  /** 已解锁的成就 id 列表（持久化） */
+  unlockedAchievements: string[]
+  /** 待弹出的成就队列 */
+  pendingAchievements: Achievement[]
+  /** 当前展示的成就 */
+  currentAchievement: Achievement | null
+
   // 操作
   pull: (multi?: number) => void
   slide: (dir: 'up' | 'down' | 'left' | 'right') => SlideResult
@@ -128,6 +137,13 @@ interface GameState {
   triggerRandomEvent: () => void
   dismissRandomEvent: () => void
   clearEventBuff: () => void
+  // v1.1 成就
+  /** 内部：检测新解锁成就，写入队列 */
+  _checkAchievements: () => void
+  /** 关闭当前成就祝贺（队列下一个顶上） */
+  dismissCurrentAchievement: () => void
+  /** 清空成就队列 */
+  clearAchievementQueue: () => void
 }
 
 const todayKey = (): string => {
@@ -172,6 +188,10 @@ const init = () => {
       activeEventBuff: null,
       pendingRandomEvent: null,
       freeGachaPending: false,
+      // v1.1 成就
+      unlockedAchievements: saved.unlockedAchievements ?? [],
+      pendingAchievements: [],
+      currentAchievement: null,
     }
   }
   return {
@@ -208,6 +228,10 @@ const init = () => {
     activeEventBuff: null,
     pendingRandomEvent: null,
     freeGachaPending: false,
+    // v1.1 成就
+    unlockedAchievements: [],
+    pendingAchievements: [],
+    currentAchievement: null,
   }
 }
 
@@ -298,6 +322,8 @@ export const useGameStore = create<GameState>((set, get) => ({
     set(updates)
     get().updateTasks(t => t.desc.includes('扭蛋'), 1)
     if (maxLevel >= 5) get().updateTasks(t => t.desc.includes('Lv.5'), 1)
+    // v1.1 检测成就
+    get()._checkAchievements()
   },
 
   slide: (dir) => {
@@ -530,6 +556,8 @@ export const useGameStore = create<GameState>((set, get) => ({
       coins: state.coins + r.reward.coins,
       totalPulls: state.totalPulls + addGacha,
     })
+    // v1.1 检测成就
+    get()._checkAchievements()
     return r
   },
 
@@ -653,6 +681,50 @@ export const useGameStore = create<GameState>((set, get) => ({
   dismissRandomEvent: () => set({ pendingRandomEvent: null }),
 
   clearEventBuff: () => set({ activeEventBuff: null }),
+
+  // v1.1 成就系统
+  _checkAchievements: () => {
+    const state = get()
+    const ctx = {
+      mergeCount: state.mergeCount,
+      totalPulls: state.totalPulls,
+      maxLevel: state.maxLevel,
+      bestCombo: state.bestCombo,
+      awakenCount: state.pet?.awakenCount ?? 0,
+      zoneMax: state.zoneMax,
+      collection: state.collection,
+      pet: state.pet,
+      petAffection: state.pet?.affection ?? 0,
+      totalCheckins: state.checkin.totalCheckins,
+      totalSessions: state.history.totalSessions,
+    }
+    const newly = detectUnlockedAchievements(ctx, state.unlockedAchievements)
+    if (newly.length === 0) return
+    const newIds = newly.map(a => a.id)
+    // 累计奖励
+    const rewardTotal = newly.reduce((s, a) => s + a.reward, 0)
+    // 写持久化队列
+    const queue = [...state.pendingAchievements, ...newly]
+    const next = state.currentAchievement ?? queue[0] ?? null
+    const rest = next ? queue.filter(a => a.id !== next.id) : []
+    set({
+      unlockedAchievements: [...state.unlockedAchievements, ...newIds],
+      pendingAchievements: rest,
+      currentAchievement: next,
+      coins: state.coins + rewardTotal,
+    })
+  },
+
+  dismissCurrentAchievement: () => {
+    const state = get()
+    const next = state.pendingAchievements[0] ?? null
+    set({
+      currentAchievement: next,
+      pendingAchievements: next ? state.pendingAchievements.slice(1) : [],
+    })
+  },
+
+  clearAchievementQueue: () => set({ pendingAchievements: [], currentAchievement: null }),
 
   reset: () => {
     set(init())

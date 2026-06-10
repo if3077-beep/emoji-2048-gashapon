@@ -25,6 +25,10 @@ export interface Zone {
   icon: string
   name: string
   subtitle: string
+  /** v1.1 主题故事：2-3 句背景设定，PM 用以丰富图鉴世界感 */
+  description: string
+  /** 推荐原因：告诉玩家"为什么玩这个主题" */
+  flavor: string
   tree: EmojiNode[]
   /** 通关后得到的"觉醒"形态（起手 emoji） */
   awakenedEmoji: string
@@ -46,6 +50,8 @@ export const ZONES: Record<ZoneId, Zone> = {
   creature: {
     id: 'creature', color: '#a3e635', bg: 'rgba(163, 230, 53, 0.12)', glow: 'rgba(163, 230, 53, 0.35)',
     icon: '🐾', name: '生物圈', subtitle: '从微生物到神龙',
+    description: '踏入亿万年的生命长河——从一颗单细胞开始，让它在你的扭蛋中分裂、突变、演化，最终跃升为九天神龙。',
+    flavor: '新手友好：合成路径最短，能快速解锁你的第一只宠物。',
     awakenedEmoji: '🐲', awakenedName: '龙魂',
     tree: buildTree([
       ['🦠', '微生物', '单细胞生命的起源，蕴含无穷可能。'],
@@ -64,6 +70,8 @@ export const ZONES: Record<ZoneId, Zone> = {
   plant: {
     id: 'plant', color: '#86efac', bg: 'rgba(134, 239, 172, 0.12)', glow: 'rgba(134, 239, 172, 0.35)',
     icon: '🌿', name: '植物界', subtitle: '从种子到世界树',
+    description: '把一颗橡子交给春风，看它扎根、抽枝、开花，最终长成托起星辰的世界树。',
+    flavor: '清新自然：颜色饱和，适合喜欢自然系收藏的玩家。',
     awakenedEmoji: '🌳', awakenedName: '世界树',
     tree: buildTree([
       ['🌰', '种子', '沉眠的奇迹，蕴藏整片森林。'],
@@ -82,6 +90,8 @@ export const ZONES: Record<ZoneId, Zone> = {
   element: {
     id: 'element', color: '#fb923c', bg: 'rgba(251, 146, 60, 0.12)', glow: 'rgba(251, 146, 60, 0.35)',
     icon: '⚡', name: '元素殿', subtitle: '从火苗到创世星',
+    description: '火水土风在掌心对撞——闪电撕开长夜，霜雪凝固时间，最后一颗创世星在混沌中点亮。',
+    flavor: '暴力美学：事件多、爆点足，奖励暴击率也最高。',
     awakenedEmoji: '✨', awakenedName: '创世星',
     tree: buildTree([
       ['🔥', '火苗', '最原始的温度，照亮黑暗。'],
@@ -100,6 +110,8 @@ export const ZONES: Record<ZoneId, Zone> = {
   culture: {
     id: 'culture', color: '#c084fc', bg: 'rgba(192, 132, 252, 0.12)', glow: 'rgba(192, 132, 252, 0.35)',
     icon: '📜', name: '人文阁', subtitle: '从甲骨到典籍',
+    description: '从一片龟甲上的占卜开始，到竹简、毛笔、宣纸、典籍——把五千年的文脉，装进你的图鉴。',
+    flavor: '书卷气息：适合喜欢东方美学的玩家，节奏舒缓但深度足。',
     awakenedEmoji: '📚', awakenedName: '永乐大典',
     tree: buildTree([
       ['🪨', '甲骨', '最早的文字，刻下先民的占卜。'],
@@ -118,6 +130,8 @@ export const ZONES: Record<ZoneId, Zone> = {
   food: {
     id: 'food', color: '#fde047', bg: 'rgba(253, 224, 71, 0.12)', glow: 'rgba(253, 224, 71, 0.35)',
     icon: '🍜', name: '美食街', subtitle: '从米粒到满汉全席',
+    description: '一碗稻米饭团开始的旅行，饺子、面条、铁锅、海味……每合成一级都让你闻到更远的烟火。',
+    flavor: '治愈胃袋：亲切感最强，玩到后面真的会被香味 emoji 治愈。',
     awakenedEmoji: '🍱', awakenedName: '满汉席',
     tree: buildTree([
       ['🌾', '稻米', '饭之根本，养活亿万人。'],
@@ -136,6 +150,8 @@ export const ZONES: Record<ZoneId, Zone> = {
   cosmic: {
     id: 'cosmic', color: '#67e8f9', bg: 'rgba(103, 232, 249, 0.12)', glow: 'rgba(103, 232, 249, 0.35)',
     icon: '🌌', name: '星际航', subtitle: '从尘埃到超新星',
+    description: '从一个原子开始，看它聚成陨石、暗月、土星、黑洞，最终点燃千亿星辰的银河。',
+    flavor: '宇宙浪漫：低概率高爆发，特别适合长线刷合成到 Lv.11+。',
     awakenedEmoji: '🌌', awakenedName: '大爆炸',
     tree: buildTree([
       ['⚛️', '粒子', '万物之始，不可再分。'],
@@ -154,6 +170,8 @@ export const ZONES: Record<ZoneId, Zone> = {
   music: {
     id: 'music', color: '#f472b6', bg: 'rgba(244, 114, 182, 0.12)', glow: 'rgba(244, 114, 182, 0.35)',
     icon: '🎵', name: '音符符', subtitle: '从拨弦到交响',
+    description: '一个单音，串成旋律，叠成鼓点，融进小提琴与铜管——百器齐鸣，灵魂共振。',
+    flavor: '节奏感最强：合成事件中带「音符」高亮反馈，听感也最丰富。',
     awakenedEmoji: '🎼', awakenedName: '第九交响',
     tree: buildTree([
       ['🎵', '单音', '最初的震动。'],
@@ -172,6 +190,8 @@ export const ZONES: Record<ZoneId, Zone> = {
   architecture: {
     id: 'architecture', color: '#94a3b8', bg: 'rgba(148, 163, 184, 0.12)', glow: 'rgba(148, 163, 184, 0.35)',
     icon: '🏛️', name: '建筑谱', subtitle: '从穴居到天空之城',
+    description: '从一处遮风避雨的洞穴开始，搭建帐篷、城堡、清真寺、铁塔……直到霓虹森林永不眠。',
+    flavor: '空间感：合成动画最具纵深感，每一级都能看到新的「楼层」。',
     awakenedEmoji: '🏯', awakenedName: '天空之城',
     tree: buildTree([
       ['🕳️', '洞穴', '最初的家，遮风避雨。'],
@@ -190,6 +210,8 @@ export const ZONES: Record<ZoneId, Zone> = {
   mythology: {
     id: 'mythology', color: '#fb7185', bg: 'rgba(251, 113, 133, 0.12)', glow: 'rgba(251, 113, 133, 0.35)',
     icon: '⚔️', name: '神话殿', subtitle: '从地祇到万神之主',
+    description: '从一块灵石里走出的林精，到独角兽、蛟龙、冥狼——最后在雷霆之上，万神之主垂目。',
+    flavor: '高燃史诗：觉醒后奖励最高，宠物形变也最华丽。',
     awakenedEmoji: '🔱', awakenedName: '万神之主',
     tree: buildTree([
       ['🪨', '灵石', '大地初开的胎衣。'],
@@ -208,6 +230,8 @@ export const ZONES: Record<ZoneId, Zone> = {
   dream: {
     id: 'dream', color: '#a78bfa', bg: 'rgba(167, 139, 250, 0.12)', glow: 'rgba(167, 139, 250, 0.35)',
     icon: '💭', name: '梦境海', subtitle: '从微梦到造物主',
+    description: '从一瞬即逝的呓语开始——迷雾、气泡、梦蝶、许愿星，最后万象归一，万梦归一。',
+    flavor: '奇幻治愈：紫调主题，奖励里常有「随机惊喜」加成。',
     awakenedEmoji: '🌀', awakenedName: '造物主',
     tree: buildTree([
       ['💤', '微梦', '一瞬即逝的呓语。'],
@@ -226,6 +250,8 @@ export const ZONES: Record<ZoneId, Zone> = {
   retro: {
     id: 'retro', color: '#facc15', bg: 'rgba(250, 204, 21, 0.12)', glow: 'rgba(250, 204, 21, 0.35)',
     icon: '🕹️', name: '复古厅', subtitle: '从像素到虚拟人生',
+    description: '一个像素点，一只会跳的小怪，一台 CRT 显示器里的夏天——直到现实与虚拟的尽头。',
+    flavor: '怀旧梗多：玩到中段会忍不住笑出声，老玩家会哭。',
     awakenedEmoji: '👾', awakenedName: '最终 BOSS',
     tree: buildTree([
       ['🔴', '像素点', '8 位的起点。'],
@@ -244,6 +270,8 @@ export const ZONES: Record<ZoneId, Zone> = {
   ocean: {
     id: 'ocean', color: '#22d3ee', bg: 'rgba(34, 211, 238, 0.12)', glow: 'rgba(34, 211, 238, 0.35)',
     icon: '🌊', name: '深蓝海', subtitle: '从浮游到深渊之主',
+    description: '从一颗浮游生物的微光，到磷虾银色河流、深海章鱼、珊瑚宫——直到深蓝的最深一搏。',
+    flavor: '深邃治愈：节奏慢但奖励稳，适合不喜欢压力爆发的玩家。',
     awakenedEmoji: '🐳', awakenedName: '深渊之心',
     tree: buildTree([
       ['🦠', '浮游', '海中最小的灯。'],

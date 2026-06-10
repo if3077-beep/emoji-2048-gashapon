@@ -8,7 +8,7 @@ import { WorldRing } from '@/components/ui/WorldRing'
 import { CoinDisplay } from '@/components/ui/CoinDisplay'
 import { useGameStore } from '@/store/gameStore'
 import { useUiStore } from '@/store/uiStore'
-import { ZONES, MAX_LEVEL } from '@/data/emoji-trees'
+import { ZONES, MAX_LEVEL, type ZoneId } from '@/data/emoji-trees'
 import { computeBuff, seasonEmoji, seasonLabel } from '@/lib/season'
 import { hasCheckedInToday } from '@/lib/checkin'
 import { isWeekendDouble } from '@/lib/weekend'
@@ -29,6 +29,7 @@ export function HomeTab() {
   const openZoneGallery = useUiStore(s => s.openZoneGallery)
   const openCheckin = useUiStore(s => s.openCheckin)
   const openStats = useUiStore(s => s.openStats)
+  const setTab = useUiStore(s => s.setTab)
 
   const zone = ZONES[currentZone]
   const currentZoneCol = collection[currentZone] ?? []
@@ -147,6 +148,9 @@ export function HomeTab() {
         </div>
       </button>
 
+      {/* v1.1 主题推荐卡（卡关时显示） */}
+      <ZoneSuggestion zoneMax={zoneMax} onPick={() => setTab('merge')} />
+
       {/* 扭蛋机 */}
       <Gashapon />
 
@@ -255,6 +259,84 @@ function DailyTasks({ tasks, onClaim }: { tasks: any[]; onClaim: (id: string) =>
             {t.claimed && <span className="text-[10px] text-white/30">已领</span>}
           </div>
         ))}
+      </div>
+    </div>
+  )
+}
+
+/**
+ * v1.1 主题推荐：玩家卡关时（当前主题 Lv.≤3）推荐一个未探索 / 高潜力主题
+ * - 规则 1：优先推荐"未探索"主题（max=0）
+ * - 规则 2：其次推荐"未通关"主题（max<11）且与当前主题不同
+ * - 规则 3：如果玩家已经通了一半以上主题，则不显示（避免打扰）
+ */
+function ZoneSuggestion({ zoneMax, onPick }: { zoneMax: Record<ZoneId, number>; onPick: () => void }) {
+  const currentZone = useGameStore(s => s.currentZone)
+  const setZone = useGameStore(s => s.setZone)
+  const openZoneGallery = useUiStore(s => s.openZoneGallery)
+  const setGuide = useUiStore(s => s.setGuide)
+  const currentMax = zoneMax[currentZone] ?? 0
+
+  if (currentMax > 3) return null
+
+  const candidates = (Object.keys(ZONES) as ZoneId[]).map(zid => ({
+    zid, z: ZONES[zid], max: zoneMax[zid] ?? 0,
+  }))
+  const cleared = candidates.filter(c => c.max >= MAX_LEVEL).length
+  if (cleared >= 6) return null
+
+  const unexplored = candidates.find(c => c.zid !== currentZone && c.max === 0)
+  const exploring = candidates
+    .filter(c => c.zid !== currentZone && c.max > 0 && c.max < MAX_LEVEL)
+    .sort((a, b) => b.max - a.max)[0]
+  const pick = unexplored ?? exploring
+  if (!pick) return null
+
+  const reason = unexplored ? '🌱 全新主题，从未探索' : `🧭 卡关？换个 ${pick.z.subtitle} 的视角再战`
+
+  return (
+    <div
+      className="w-full max-w-[400px] rounded-2xl p-3 ring-1"
+      style={{
+        background: pick.z.bg,
+        border: `1px solid ${pick.z.color}55`,
+        boxShadow: `0 0 14px ${pick.z.glow}`,
+      }}
+    >
+      <div className="mb-1.5 flex items-center justify-between">
+        <span className="text-[10px] font-bold text-white/60">✨ 推荐主题</span>
+        <button
+          onClick={() => openZoneGallery()}
+          className="text-[10px] text-white/40 underline-offset-2 hover:underline"
+        >
+          换一个
+        </button>
+      </div>
+      <div className="flex items-center gap-2.5">
+        <div
+          className="flex h-10 w-10 items-center justify-center rounded-xl text-xl"
+          style={{ background: 'rgba(255,255,255,0.06)' }}
+        >
+          {pick.z.icon}
+        </div>
+        <div className="flex-1 leading-tight">
+          <div className="text-sm font-bold" style={{ color: pick.z.color }}>
+            {pick.z.name}
+          </div>
+          <div className="text-[10px] text-white/60">{reason}</div>
+          <div className="text-[9px] text-white/40 mt-0.5">{pick.z.flavor}</div>
+        </div>
+        <button
+          onClick={() => {
+            setZone(pick.zid)
+            setGuide(`已切换到 ${pick.z.name}`)
+            onPick()
+          }}
+          className="touch-target rounded-full bg-white/15 px-3 py-1 text-[11px] font-bold text-white active:scale-95"
+          style={{ border: `1px solid ${pick.z.color}55` }}
+        >
+          去合成
+        </button>
       </div>
     </div>
   )
