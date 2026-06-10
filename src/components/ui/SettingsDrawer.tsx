@@ -12,10 +12,12 @@ import { isWeekendDouble } from '@/lib/weekend'
 import { getSeason, seasonEmoji, seasonLabel } from '@/lib/season'
 import { computeBuff } from '@/lib/season'
 import { useState as useReactState } from 'react'
+import { ResetConfirmModal } from './ResetConfirmModal'
 
 export function SettingsDrawer() {
   const open = useUiStore(s => s.settingsOpen)
   const setOpen = useUiStore(s => s.setSettingsOpen)
+  const setConfirmResetOpen = useUiStore(s => s.setConfirmResetOpen)
   const muted = useUiStore(s => s.muted)
   const setMuted = useUiStore(s => s.setMuted)
   const coins = useGameStore(s => s.coins)
@@ -233,6 +235,25 @@ export function SettingsDrawer() {
           onClick={() => setMuted(!muted)}
         />
 
+        {/* v13.0 重开一局（红色 + 1px 分割线区隔） */}
+        <div className="my-2 h-px bg-white/5" />
+        <button
+          onClick={() => {
+            setConfirmResetOpen(true)
+            setOpen(false)
+          }}
+          className="flex items-center gap-2 rounded-xl px-3 py-2 text-[11px] font-bold text-rose-200 active:scale-95"
+          style={{
+            background: 'linear-gradient(90deg, rgba(244,63,94,0.2), rgba(236,72,153,0.2))',
+            border: '1px solid rgba(244,63,94,0.4)',
+          }}
+          title="清空全部进度，保留收藏和已读（送 +50🪙）"
+        >
+          <span className="text-sm">🔁</span>
+          <span>重开一局</span>
+          <span className="ml-auto text-[9px] text-rose-300">清空进度</span>
+        </button>
+
         {/* 提示 */}
         <div className="mt-2 rounded-xl bg-white/[0.03] p-2 text-[9px] text-white/40">
           <div className="mb-1 text-[10px] font-bold text-white/60">💡 v12 提示</div>
@@ -244,6 +265,9 @@ export function SettingsDrawer() {
           </ul>
         </div>
       </div>
+
+      {/* v13.0 重开二次确认 modal（抽屉内挂载，关闭抽屉后 modal 仍可显示） */}
+      <ResetConfirmModal />
     </div>
   )
 }

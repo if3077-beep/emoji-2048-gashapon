@@ -84,6 +84,14 @@ interface UiState {
   // v12.1 设置抽屉
   settingsOpen: boolean
   setSettingsOpen: (v: boolean) => void
+  // v13.0 重开二次确认 modal
+  confirmResetOpen: boolean
+  setConfirmResetOpen: (v: boolean) => void
+  // v13.2 累计重开次数
+  resetCount: number
+  bumpResetCount: () => void
+  // v13.0 重开一局：清弹层 + 清 toast，保留 readZones / favoriteZones / muted
+  resetUi: () => void
 }
 
 let _toastId = 0
@@ -192,4 +200,19 @@ export const useUiStore = create<UiState>((set) => ({
   // v12.1 设置抽屉
   settingsOpen: false,
   setSettingsOpen: (v) => set({ settingsOpen: v }),
+  // v13.0 重开二次确认
+  confirmResetOpen: false,
+  setConfirmResetOpen: (v) => set({ confirmResetOpen: v }),
+  // v13.2 累计重开次数
+  resetCount: 0,
+  bumpResetCount: () => set(s => ({ resetCount: s.resetCount + 1 })),
+  // v13.0 重开一局：清所有弹层/toast，保留 readZones / favoriteZones / muted
+  resetUi: () => set({
+    settingsOpen: false,
+    showZoneGallery: false,
+    showCheckin: false,
+    showStats: false,
+    showShare: false,
+    toasts: [],
+  }),
 }))

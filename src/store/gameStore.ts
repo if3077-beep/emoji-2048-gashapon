@@ -972,7 +972,10 @@ export const useGameStore = create<GameState>((set, get) => ({
   clearDeadlock: () => set({ isDeadlocked: false }),
 
   reset: () => {
+    // v13.0 完整重开：set(init) + spawn 1 + save
     set(init())
+    get().trySpawnOne()
+    get().save()
   },
 
   save: () => {

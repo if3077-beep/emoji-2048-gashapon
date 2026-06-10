@@ -342,4 +342,138 @@ v0.4 留存   ──→  v0.5 成就   ──→  v0.6 社交
 - GitHub Pages 自动部署通过
 - 多角色审视：4 轮中每轮覆盖 5+ 角色
 
+---
+
+# v13 迭代规划：重开一局按钮 + 多角色 4 轮
+
+> 用户原话：「继续检查打磨」「重置按钮记得直接是重开一局，继续迭代」
+>
+> 核心问题：
+> 1. 抽屉里"🔄 刷新网格 -5🪙"是"局部重置"（保留 Lv.4+），玩家可能误以为是"重开一局"
+> 2. `gameStore.reset: () => set(init())` 存在但**没清 uiStore / 没清 modal / 没清 toast**
+> 3. 玩家没看到"重开一局"按钮 — 缺一个明显的"从头开始"入口
+>
+> 4 轮 = 4 个微版本，每轮 1-2 个核心改动。
+
+## 多角色审视表
+
+| 角色 | 当前痛点 | v13 创意点 |
+|------|----------|-----------|
+| **PM** | 没"重开一局"按钮，玩家卡死只能 F5 刷新 | v13.0 抽屉底部加红色 "🔁 重开一局" 按钮 |
+| **PM** | reset 没二次确认，玩家可能误触 | v13.0 紫红渐变 modal，4 行说明 + 2 按钮 |
+| **UI 设计师** | "🔄 刷新" vs "🔁 重开" 同义难辨 | v13.0 紫色 chip vs 红色 button，emoji + 颜色双重区分 |
+| **UI 设计师** | 二次确认 modal 视觉轻 | v13.0 紫红渐变 + ⚠️ 大字 + 4 行进度说明 |
+| **策划** | 重开没奖励，玩家没有动力 | v13.1 重开送 🎁 50🪙 + 首扭蛋 ×1.5（3 局）|
+| **策划** | 重开防误触不够 | v13.1 "确认" 按钮长按 1s 才生效 |
+| **策划** | 多次重开没成就 | v13.2 累计重开 1/3/5/10 → 解锁 "🔁 破而后立" |
+| **前端** | `reset: () => set(init())` 不完整 | v13.0 全栈重置：grid/collection/coins/pet/checkin/challenges |
+| **前端** | reset 后 modal 不关 / toast 残留 | v13.3 清 uiStore 弹层状态 + 清 toast queue |
+| **前端** | reset 后宠物 egg 计时不对 | v13.3 petEggStartedAt 同步重置为 now |
+| **增长** | uiStore.readZones/favoriteZones 跟着重置 = 玩家情感清零 | v13.0 保留收藏/已读（情感锚点） |
+| **增长** | 重开体验断裂 | v13.0 全屏紫青 1.5s 粒子过场 + 大字 "🔁 重开一局！" |
+| **运营** | "重开" 一词冰冷 | v13.0 改 "🔁 重新开始"（更友好） |
+| **运营** | 玩家重开前不知道会失去什么 | v13.0 modal 4 行进度说明（"X 局 / Y 羁绊 / Z 收藏保留"）|
+| **QA** | reset 二次确认 ESC 关闭 | v13.3 加 ESC 关闭 + Enter 确认 |
+| **QA** | React 18 双 mount modal 双弹 | v13.3 modal 严格 useState 控制 + 单次 mount |
+
+## v13.0 — "🔁 重开一局"按钮 + 二次确认 modal
+
+**问题根因**：
+- `gameStore.reset: () => set(init())` 存在但只重置 gameStore
+- uiStore 的 modal flags（settingsOpen / readZones / favoriteZones / 已读标志）不重置 → 残留状态
+- 没清 `localStorage`（虽然 `set(init())` 后 save() 会写新值，但 cache 一致性差）
+- 玩家没看到"重开一局"按钮
+
+**方案**：
+1. `gameStore.ts` 增强 reset：
+   ```ts
+   reset: () => {
+     const s = get()
+     set(init())
+     get().trySpawnOne()  // 确保 grid 至少 1 颗
+     save()  // 立即持久化（防止下次刷新又读旧值）
+   }
+   ```
+2. `uiStore.ts` 加 `resetUi()`：清 settingsOpen / 一堆 modal flag / 清 toast queue
+   - **保留** readZones / favoriteZones / muted（情感锚点）
+3. `SettingsDrawer.tsx` 加 "🔁 重开一局" 红色按钮（抽屉底部，1px 分割线区隔）
+4. 新建 `ResetConfirmModal.tsx`：
+   - 紫红渐变背景，⚠️ 大字
+   - 4 行说明：📊 进度清零 / 🐾 宠物清零 / 📅 签到清零 / ⚠️ 收藏和已读保留
+   - 2 按钮：[取消] [🔁 确认重开]
+   - 触发：抽屉按钮
+5. 抽屉内"立即重开"：调 reset + resetUi + 紫青全屏粒子 1.5s + 大字"🔁 重开一局！"
+
+**验收**：
+- 抽屉点"🔁 重开一局" → modal 弹出
+- modal [取消] 关闭，状态不变
+- modal [🔁 确认重开] → 重置 + 紫青粒子 + 跳 home
+- 重开后收藏/已读不丢，coins=初值，grid=0+1（trySpawnOne）
+
+## v13.1 — 长按 1s 确认 + 重开奖励
+
+**策划** 视角
+
+- 二次确认 modal "确认重开" 按钮加 **长按 1s 才生效**（防误触）
+- 进度条显示（0-100% 1s）
+- 松手未满 1s 取消
+- 重开后立即送 🎁 50🪙 重开奖励（pushToast + addCoins）
+- 首扭蛋 1.5 倍 buff 持续 3 局（用 `useGameStore.buffMultiplier = 1.5` 临时态，3 局后回 1.0）
+
+**验收**：
+- 长按 1s 才确认，短按取消
+- 重开看到 "🎁 重开奖励 +50🪙" toast
+- 3 局内扭蛋 coin 实际 1.5 倍
+
+## v13.2 — 重开成就 + 紫青过场
+
+**策划/增长** 视角
+
+- 加成就：累计重开 1 / 3 / 5 / 10 次 → 解锁 "🔁 破而后立" 等 4 个成就
+- 重开后跳到 home tab 但**保持 1.5s 紫青全屏粒子过场**（不要立刻可见 grid）
+- 过场：30 颗紫青粒子 + 中心"🔁 重新开始" 大字 1.2s → 渐隐 → 网格淡入
+- uiStore.resetCount 持久化（独立 KEY `gashapon-reset-count`）
+
+**验收**：
+- 重开 1/3/5/10 → toast 通知成就
+- 1.5s 紫青过场可见
+- uiStore.resetCount 持久化
+
+## v13.3 — bug hunt + 微调
+
+**QA/前端** 视角
+
+- 修：reset 后所有 modal 关闭（可能 uiStore 漏关 `checkinOpen` / `statsOpen` / `zoneGalleryOpen`）
+- 修：toast 队列清空
+- 修：宠物 pet state 重置（pet 可能仍在宠物页）
+- 加：ESC 关闭二次确认 modal
+- 加：Enter 确认（modal 内）
+- 性能：reset 后立即 useMemo deps 优化
+- 性能：localStorage 体积（不重置的部分会持续增长）— 暂不动，v14 再 base64
+- BUG_AUDIT.md 补 v13 记录
+- console.error / warn 检查
+
+## 文件改动清单
+
+| 文件 | 改动 |
+|------|------|
+| `src/store/gameStore.ts` | 增强 reset（清状态 + save + spawn 1）|
+| `src/store/uiStore.ts` | 加 resetUi() + resetCount |
+| `src/components/ui/ResetConfirmModal.tsx` | 新建：紫红渐变 modal + 长按 1s 按钮 |
+| `src/components/ui/SettingsDrawer.tsx` | 加 "🔁 重开一局" 红色按钮 + 挂载 modal |
+| `src/lib/achievements.ts` | 加 "🔁 破而后立" 4 档 |
+| `src/components/ui/ResetBurst.tsx` | 新建：1.5s 紫青全屏粒子过场 |
+| `src/App.tsx` | 挂载 ResetBurst |
+| `BUG_AUDIT.md` | v13 4 轮记录 |
+| `PLANNING.md` | 已 append |
+
+## 质量门槛
+
+- TypeScript 0 错误
+- 37+ 测试通过
+- build 增量 ≤ +12 KB gzip
+- GitHub Pages 自动部署通过
+- 多角色审视：4 轮覆盖 PM/UI/策划/前端/增长/运营/QA = 7 角色
+
+
 
