@@ -51,24 +51,25 @@ export function HomeTab() {
   const weekend = isWeekendDouble()
 
   return (
-    <div className="flex w-full flex-col items-center gap-2.5 px-3 py-2">
+    <div className="flex w-full flex-col items-center gap-1.5 px-3 py-1.5">
+      {/* v6.3 主页紧凑化：gap-2.5 → gap-1.5（-40%），py-2 → py-1.5 */}
       {/* v5.0 整合：主页 = 货币条 + 季节buff + 卦象 + 主题 + 扭蛋机 + 网格 + 任务 */}
       {/* 货币 + 最高 + Combo + v0.4 入口 */}
-      <div className="flex w-full max-w-[400px] items-center gap-1.5">
-        <div className="glass flex flex-1 items-center gap-1.5 rounded-full px-2.5 py-1.5">
-          <span className="text-base">🪙</span>
-          <CoinDisplay value={coins} bumpKey={coins} className="text-sm" />
-          <span className="text-[9px] text-white/30">扭蛋币</span>
+      <div className="flex w-full max-w-[400px] items-center gap-1">
+        <div className="glass flex flex-1 items-center gap-1 rounded-full px-2 py-1">
+          <span className="text-sm">🪙</span>
+          <CoinDisplay value={coins} bumpKey={coins} className="text-xs font-bold" />
+          <span className="text-[8px] text-white/30">扭蛋币</span>
         </div>
         <button
           onClick={openCheckin}
-          className="glass relative flex items-center gap-1 rounded-full px-2 py-1.5 active:scale-95"
+          className="glass relative flex items-center gap-0.5 rounded-full px-1.5 py-1 active:scale-95"
           style={{
             background: checkedToday ? 'rgba(34,197,94,0.2)' : 'rgba(251,191,36,0.15)',
           }}
         >
-          <span className="text-sm">🎁</span>
-          <span className="font-mono text-[10px] font-bold" style={{ color: checkedToday ? '#86efac' : '#fbbf24' }}>
+          <span className="text-xs">🎁</span>
+          <span className="font-mono text-[9px] font-bold" style={{ color: checkedToday ? '#86efac' : '#fbbf24' }}>
             {checkin.streak}/7
           </span>
           {!checkedToday && (
@@ -77,55 +78,55 @@ export function HomeTab() {
         </button>
         <button
           onClick={openStats}
-          className="glass flex items-center gap-1 rounded-full px-2 py-1.5 active:scale-95"
+          className="glass flex items-center gap-0.5 rounded-full px-1.5 py-1 active:scale-95"
         >
-          <span className="text-sm">📊</span>
+          <span className="text-xs">📊</span>
         </button>
-        <div className="glass flex items-center gap-1 rounded-full px-2 py-1.5">
-          <span className="text-[9px] text-white/40">最高</span>
-          <span className="font-mono text-[11px] font-bold text-ember-400">Lv.{maxLevel}</span>
+        <div className="glass flex items-center gap-0.5 rounded-full px-1.5 py-1">
+          <span className="text-[8px] text-white/40">最高</span>
+          <span className="font-mono text-[10px] font-bold text-ember-400">Lv.{maxLevel}</span>
         </div>
         {combo > 1 && (
-          <div className="glass flex items-center gap-1 rounded-full px-2 py-1.5">
-            <span className="text-[10px] text-gold-400">×{combo}</span>
+          <div className="glass flex items-center gap-0.5 rounded-full px-1.5 py-1">
+            <span className="text-[9px] text-gold-400">×{combo}</span>
           </div>
         )}
       </div>
 
-      {/* v0.3 季节 buff 条（v1.2 拆 chip + 防 emoji 堆叠） */}
+      {/* v0.3 季节 buff 条（v1.2 拆 chip + 防 emoji 堆叠，v6.3 紧凑化） */}
       <div
-        className="flex w-full max-w-[400px] flex-wrap items-center gap-1.5 rounded-2xl px-2.5 py-1.5 text-[10px]"
+        className="flex w-full max-w-[400px] flex-wrap items-center gap-1 rounded-2xl px-2 py-1 text-[9px]"
         style={{
-          background: 'linear-gradient(90deg, rgba(251,191,36,0.12), rgba(167,139,250,0.12))',
-          border: '1px solid rgba(251,191,36,0.2)',
+          background: 'linear-gradient(90deg, rgba(167,139,250,0.10), rgba(96,165,250,0.10))',  // v6.3 紫青替代金色
+          border: '1px solid rgba(167,139,250,0.18)',
         }}
       >
-        <span className="rounded-full bg-white/[0.06] px-1.5 py-0.5 text-[11px]">{seasonEmoji(buff.season)}</span>
-        <span className="text-white/70">今日 <span className="text-gold-400 font-bold">{seasonLabel(buff.season)}季</span></span>
-        <span className="rounded-full bg-emerald-500/15 px-1.5 py-0.5 text-emerald-300">
+        <span className="rounded-full bg-white/[0.06] px-1 py-0 text-[10px]">{seasonEmoji(buff.season)}</span>
+        <span className="text-white/70">今日 <span className="text-violet-300 font-bold">{seasonLabel(buff.season)}季</span></span>
+        <span className="rounded-full bg-emerald-500/15 px-1 py-0 text-emerald-300">
           🍀 {buff.luckyZoneName}
         </span>
         {weekend && (
-          <span className="rounded-full bg-rose-500/20 px-1.5 py-0.5 text-rose-300 font-bold animate-pulse">
+          <span className="rounded-full bg-rose-500/20 px-1 py-0 text-rose-300 font-bold animate-pulse">
             🎉 周末双倍
           </span>
         )}
         {buff.multiplier > 1 ? (
-          <span className="rounded-full bg-gold-500/30 px-1.5 py-0.5 font-mono font-bold text-gold-300">
+          <span className="rounded-full bg-violet-500/30 px-1 py-0 font-mono font-bold text-violet-300">
             ×{buff.multiplier}
           </span>
         ) : (
-          <span className="rounded-full bg-white/[0.04] px-1.5 py-0.5 text-white/40">5% 暴击</span>
+          <span className="rounded-full bg-white/[0.04] px-1 py-0 text-white/40">5% 暴击</span>
         )}
       </div>
 
       {/* v3.2 创意：今日宜合 + 抽卡徽章进度 */}
       <DailyFortune totalPulls={totalPulls} currentZone={currentZone} />
 
-      {/* 当前主题卡片 + 切换入口 */}
+      {/* 当前主题卡片 + 切换入口（v6.3 紧凑化） */}
       <button
         onClick={openZoneGallery}
-        className="touch-target flex w-full max-w-[400px] items-center gap-3 rounded-2xl p-3 text-left transition-all active:scale-[0.99]"
+        className="touch-target flex w-full max-w-[400px] items-center gap-2 rounded-2xl p-2 text-left transition-all active:scale-[0.99]"
         style={{
           background: zone.bg,
           border: `1px solid ${zone.color}55`,
@@ -133,26 +134,26 @@ export function HomeTab() {
         }}
       >
         <div
-          className="flex h-12 w-12 items-center justify-center rounded-xl text-2xl"
+          className="flex h-10 w-10 items-center justify-center rounded-xl text-xl"
           style={{ background: 'rgba(255,255,255,0.06)' }}
         >
           {zone.icon}
         </div>
         <div className="flex-1 leading-tight">
-          <div className="flex items-center gap-1.5">
-            <span className="text-sm font-bold" style={{ color: zone.color }}>
+          <div className="flex items-center gap-1">
+            <span className="text-xs font-bold" style={{ color: zone.color }}>
               {zone.name}
             </span>
-            <span className="text-[9px] text-white/40">· {zone.subtitle}</span>
+            <span className="text-[8px] text-white/40">· {zone.subtitle}</span>
           </div>
-          <div className="mt-1 flex items-center gap-2 text-[10px] text-white/50">
+          <div className="mt-0.5 flex items-center gap-1.5 text-[9px] text-white/50">
             <span>已收集 {currentZoneCol.length}/{MAX_LEVEL}</span>
             <span className="text-white/20">·</span>
             <span>{clearedCount}/{totalZones} 通关</span>
           </div>
         </div>
         <div
-          className="flex h-9 w-9 items-center justify-center rounded-full text-lg"
+          className="flex h-8 w-8 items-center justify-center rounded-full text-base"
           style={{ background: 'rgba(255,255,255,0.05)' }}
         >
           🗺️

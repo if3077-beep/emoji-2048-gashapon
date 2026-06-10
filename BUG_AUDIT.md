@@ -1,7 +1,7 @@
 # BUG_AUDIT.md — emoji-2048-gashapon
 
-> 最后自查：2026-06-10（v5 push 后）
-> 14 个 GitHub Pages 版本（v0.4 → v5）已 push，37 测试 0 错误，build 128.28 KB gzip。
+> 最后自查：2026-06-10（v6 push 后）
+> 15 个 GitHub Pages 版本（v0.4 → v6）已 push，37 测试 0 错误，build 130.24 KB gzip。
 
 ## 1. 用户原话反馈 → 修复/打补丁映射
 
@@ -30,6 +30,9 @@
 | "PM 视角再打磨和新增爽感项" | v5.3 | ✅ 已加 | **🔥 连滑 streak bar**（连续 3 次成功滑动 +5🪙 + 进度点 + 满格动画 + streak 失败清零 + toast "🔥 X 连滑 +5🪙"）；GameState 加 slideStreak 字段 |
 | "成就你合并了但是没有展示呀" | v4.1 | ✅ 已重做 | AchievementUnlockModal carousel 模式：多成就时"✨ N/total"进度徽章 + 左右切换按钮 + 12px dots 指示器 + 标题/描述随 active 切换重渲；点"📋 全部"弹出**右侧抽屉展柜**（0.3s slide 动画 + 12 项成就 list + 总奖励/成数统计 + 全部收下按钮）|
 | "继续打磨" | v4.2 | ✅ 已加 | 合并位置 3 个合成后的新 emoji 粒子（径向散开 + 旋转 + drop-shadow 主题色），数字飘字旁边再飞 3 颗 |
+| "动效这个黄色光晕很丑" | v6.0 | ✅ 已重做 | 新建 `src/lib/effects.ts` 集中所有动效配色：极光紫青（`#a78bfa` + `#67e8f9` + `#f0abfc`）替代 `rgba(251,191,36,...)` 金黄；MergeGrid 起点光球用 radial-gradient（白→青→紫 4 色层 + 紫青双层 box-shadow 28+56px）；流光带 6px 宽紫→青 linear-gradient（带紫青双层 18+36px 光晕）；终点爆裂 60px 青粉径向；移动 cell 闪光 zone-aware 染色；合并浮起 y -10 + 紫青阴影；5+ 连锁 12 颗 ⭐✨💫🌟💜 粒子 drop-shadow 改青；数字飘字颜色全紫（#c4b5fd 替代 #fde68a）；Dpad hint 高亮从金色 `bg-gold-500 ring-gold-300` 改紫青 `text-white ring-violet-400/50` |
+| "图鉴接入免费 API" | v6.1 | ✅ 已接 | 新建 `src/lib/wiki.ts`：1) `WIKI_ZH = zh.wikipedia.org/api/rest_v1/page/summary/` 中文摘要（无 key 免费）2) TheMealDB 菜谱（无 key 免费，限 food/ocean 区）3) 12 zone 关键词 fallback → 4) emoji-trees 风味 local fallback。CollectionView 棋子弹层加"📖 故事 / 🍽️ 看菜谱"按钮（isFood 才显示菜谱），loading spinner + 来源 chip（📖 Wikipedia / 🍽️ TheMealDB / 📚 Local）+ ↗ 打开链接 + 缩略图 |
+| "整体再迭代三次" | v6.2 | ✅ 已迭代 | 第一次 v6.0 配色重设计；第二次 v6.1 接入 API；第三次 v6.2 稀有时刻全屏：合成 Lv.10+ 触发 1.6s 全屏紫青径向背景 + 8xl emoji + "🌟 Lv.X 稀有时刻 🌟" + "达成新等级 · 收藏已解锁" + GSAP back.out 缩放 + CSS letter-spacing 1.5s 动画 |
 
 ## 2. 审计到的所有 bug 与修复
 

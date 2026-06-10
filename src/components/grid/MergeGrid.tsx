@@ -37,6 +37,7 @@ export function MergeGrid() {
   const currentZone = useGameStore(s => s.currentZone)
   const combo = useGameStore(s => s.combo)
   const bestCombo = useGameStore(s => s.bestCombo)
+  const mergeCount = useGameStore(s => s.mergeCount)  // v6.4 新手引导用
 
   const pushToast = useUiStore(s => s.pushToast)
   const setGuide = useUiStore(s => s.setGuide)
@@ -278,21 +279,33 @@ export function MergeGrid() {
             if (tile) {
               const newEmoji = getEmoji(tile)
               const newLevel = tile.level
-              for (let p = 0; p < 3; p++) {
+              // v6.5 合并 emoji 粒子动效增强：5 颗、距离更远、旋转更狂、弹性曲线
+              const particleCount = newLevel > 11 ? 7 : 5
+              for (let p = 0; p < particleCount; p++) {
                 const ep = document.createElement('div')
                 ep.textContent = newEmoji
                 ep.className = 'pointer-events-none absolute left-1/2 top-1/2 z-30 -translate-x-1/2 -translate-y-1/2'
-                ep.style.fontSize = '20px'
-                ep.style.filter = `drop-shadow(0 0 6px ${dropShadow(isCrit, isLucky)})`
+                ep.style.fontSize = newLevel >= 10 ? '26px' : '22px'
+                ep.style.filter = `drop-shadow(0 0 8px ${dropShadow(isCrit, isLucky)})`
                 cell.appendChild(ep)
-                const angle = (p - 1) * 0.6 + (Math.random() - 0.5) * 0.4
-                const dist = 36 + Math.random() * 24
+                // 360° 均匀分布 + 一点随机
+                const baseAngle = (p / particleCount) * Math.PI * 2
+                const angle = baseAngle + (Math.random() - 0.5) * 0.5
+                const dist = 48 + Math.random() * 36
                 gsap.fromTo(
                   ep,
-                  { x: 0, y: 0, scale: 0.3, opacity: 0, rotation: 0 },
-                  { x: Math.sin(angle) * dist, y: -Math.cos(angle) * dist - 20, scale: newLevel > 11 ? 1.4 : 1, opacity: 1, rotation: angle * 100, duration: 0.4, ease: 'power2.out' },
+                  { x: 0, y: 0, scale: 0.2, opacity: 0, rotation: 0 },
+                  {
+                    x: Math.sin(angle) * dist,
+                    y: -Math.cos(angle) * dist - 24,
+                    scale: newLevel > 11 ? 1.6 : newLevel >= 10 ? 1.3 : 1,
+                    opacity: 1,
+                    rotation: angle * 220,
+                    duration: 0.5,
+                    ease: 'back.out(1.6)',
+                  },
                 )
-                gsap.to(ep, { y: `+=${40}`, opacity: 0, scale: 0.3, duration: 0.5, delay: 0.4, ease: 'power2.in', onComplete: () => ep.remove() })
+                gsap.to(ep, { y: `+=${60}`, opacity: 0, scale: 0.2, duration: 0.6, delay: 0.4, ease: 'power2.in', onComplete: () => ep.remove() })
               }
             }
           }
@@ -369,6 +382,9 @@ export function MergeGrid() {
   // v0.8 3 连锁动：检测到 match3 → 整行整列高亮
   const match3Lines = detectMatch3(grid)
 
+  // v6.4 新手引导：前 3 次合并前显示"← → ↑ ↓ 滑动"提示
+  const showSwipeHint = mergeCount < 3 && grid.some(row => row.some(t => t))
+
   // 键盘方向键
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -397,15 +413,45 @@ export function MergeGrid() {
       onPointerUp={onTouchEnd}
       onPointerLeave={(e) => { if (sliding.active) onTouchEnd(e) }}
     >
+      {/* v6.4 新手引导：滑动 4 方向箭头 + 提示文字 */}
+      {showSwipeHint && (
+        <div
+          className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center"
+          style={{
+            background: 'radial-gradient(circle, rgba(167,139,250,0.18) 0%, transparent 70%)',
+            animation: 'swipeHintPulse 1.6s ease-in-out infinite',
+          }}
+        >
+          <div className="text-center">
+            <div className="text-3xl" style={{ animation: 'swipeArrows 1.6s ease-in-out infinite' }}>
+              👆👇👈👉
+            </div>
+            <div className="mt-1 rounded-full bg-violet-500/30 px-2 py-0.5 text-[10px] font-bold text-white backdrop-blur-sm">
+              滑动方向合成
+            </div>
+          </div>
+          <style>{`
+            @keyframes swipeHintPulse {
+              0%, 100% { opacity: 0.85; }
+              50% { opacity: 1; }
+            }
+            @keyframes swipeArrows {
+              0%   { letter-spacing: 0.1em; transform: scale(1); }
+              50%  { letter-spacing: 0.5em; transform: scale(1.1); }
+              100% { letter-spacing: 0.1em; transform: scale(1); }
+            }
+          `}</style>
+        </div>
+      )}
       <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${GRID_SIZE}, 1fr)`, position: 'relative' }}>
-        {/* v1.2 方向轨迹光带 */}
+        {/* v1.2 方向轨迹光带（v6.3 紫青替代金色） */}
         {lastDir && (
           <div
             className="pointer-events-none absolute inset-0 z-0"
             style={{
               background: lastDir === 'left' || lastDir === 'right'
-                ? 'linear-gradient(90deg, transparent, rgba(251,191,36,0.12), transparent)'
-                : 'linear-gradient(180deg, transparent, rgba(251,191,36,0.12), transparent)',
+                ? 'linear-gradient(90deg, transparent, rgba(167,139,250,0.18), transparent)'
+                : 'linear-gradient(180deg, transparent, rgba(103,232,249,0.18), transparent)',
               animation: 'dirTrailFade 0.4s ease-out forwards',
             }}
           />
