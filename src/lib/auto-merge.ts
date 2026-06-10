@@ -54,6 +54,60 @@ export const detectMatch3 = (grid: Grid): Array<[number, number][]> => {
   return matches
 }
 
+/** v2.1 消消乐强化：检测最长 3+ 连锁长度
+ * - 返回：longest (>=3) 和 groups (所有 3+ 连锁组)
+ * - 同时支持横/竖扫描扩展到 4、5+ 连锁
+ */
+export interface MatchGroup {
+  cells: Array<[number, number]>
+  length: number
+  zone: string
+  level: number
+}
+
+export const findLongestMatch = (grid: Grid): { longest: number; groups: MatchGroup[] } => {
+  const groups: MatchGroup[] = []
+  const sameKey = (a: any, b: any) => a && b && a.zone === b.zone && a.level === b.level
+
+  // 行扫描
+  for (let r = 0; r < GRID_SIZE; r++) {
+    let c = 0
+    while (c < GRID_SIZE) {
+      const head = grid[r]?.[c]
+      if (!head) { c++; continue }
+      let end = c + 1
+      while (end < GRID_SIZE && sameKey(head, grid[r]?.[end])) end++
+      const len = end - c
+      if (len >= 3) {
+        const cells: Array<[number, number]> = []
+        for (let k = c; k < end; k++) cells.push([r, k])
+        groups.push({ cells, length: len, zone: head.zone, level: head.level })
+      }
+      c = end
+    }
+  }
+  // 列扫描
+  for (let c = 0; c < GRID_SIZE; c++) {
+    let r = 0
+    while (r < GRID_SIZE) {
+      const head = grid[r]?.[c]
+      if (!head) { r++; continue }
+      let end = r + 1
+      while (end < GRID_SIZE && sameKey(head, grid[end]?.[c])) end++
+      const len = end - r
+      if (len >= 3) {
+        const cells: Array<[number, number]> = []
+        for (let k = r; k < end; k++) cells.push([k, c])
+        groups.push({ cells, length: len, zone: head.zone, level: head.level })
+      }
+      r = end
+    }
+  }
+
+  const longest = groups.reduce((m, g) => Math.max(m, g.length), 0)
+  return { longest, groups }
+}
+
 /** 一键合并：贪心反复找最优方向滑动，直到无事件 */
 export const autoMerge = (grid: Grid, maxRounds = 6): AutoMergeResult => {
   let g = grid

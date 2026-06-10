@@ -27,6 +27,7 @@ import { RandomEventModal } from '@/components/ui/RandomEventModal'
 import { EventBuffBadge } from '@/components/ui/EventBuffBadge'
 import { SynergiesPanel } from '@/components/ui/SynergiesPanel'
 import { AchievementUnlockModal } from '@/components/ui/AchievementUnlockModal'
+import { AwakenBurst } from '@/components/ui/AwakenBurst'
 
 const TABS = [
   { id: 'home' as const, icon: '🏠', label: '主页' },
@@ -136,6 +137,7 @@ export default function App() {
       <EventBuffBadge />
       <SynergiesPanel />
       <AchievementUnlockModal />
+      <AwakenBurst />
     </div>
   )
 }

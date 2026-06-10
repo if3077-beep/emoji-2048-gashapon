@@ -3,8 +3,18 @@
  */
 import { create } from 'zustand'
 import type { CoinBurst } from '@/components/ui/CoinBurst'
+import type { MatchGroup } from '@/lib/auto-merge'
 
 export type TabId = 'home' | 'merge' | 'collection' | 'more'
+
+interface AwakenBurst {
+  /** 触发时间戳（用于自动消失） */
+  startedAt: number
+  /** 连锁组（用于在 burst 上画高亮位置） */
+  groups: MatchGroup[]
+  /** 最长连锁长度 */
+  longest: number
+}
 
 interface UiState {
   tab: TabId
@@ -53,6 +63,10 @@ interface UiState {
   showSynergies: boolean
   openSynergies: () => void
   closeSynergies: () => void
+  // v2.1 觉醒 burst
+  awakenBurst: AwakenBurst | null
+  triggerAwakenBurst: (groups: MatchGroup[], longest: number) => void
+  clearAwakenBurst: () => void
 }
 
 let _toastId = 0
@@ -121,4 +135,13 @@ export const useUiStore = create<UiState>((set) => ({
   showSynergies: false,
   openSynergies: () => set({ showSynergies: true }),
   closeSynergies: () => set({ showSynergies: false }),
+  // v2.1 觉醒 burst（5+ 连锁触发 2s 全屏慢动作 + 色环 + 文字）
+  awakenBurst: null,
+  triggerAwakenBurst: (groups, longest) => {
+    set({ awakenBurst: { startedAt: Date.now(), groups, longest } })
+    setTimeout(() => {
+      set(s => (s.awakenBurst && Date.now() - s.awakenBurst.startedAt >= 1900 ? { awakenBurst: null } : {}))
+    }, 2000)
+  },
+  clearAwakenBurst: () => set({ awakenBurst: null }),
 }))

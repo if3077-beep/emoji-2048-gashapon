@@ -23,7 +23,7 @@ import {
   canAnyMove,
   deadlockRelief,
 } from '@/lib/merge-engine'
-import { autoMerge as autoMergeEngine } from '@/lib/auto-merge'
+import { autoMerge as autoMergeEngine, findLongestMatch, type MatchGroup } from '@/lib/auto-merge'
 import { generatePet, feedPet, petPet, computeForm, type Pet, type PetForm } from '@/lib/pet-gen'
 import { generateDailyTasks, updateTaskProgress, type DailyTask } from '@/lib/task-system'
 import { loadSave, writeSave } from '@/lib/persistence'
@@ -505,6 +505,55 @@ export const useGameStore = create<GameState>((set, get) => ({
     set({ grid: result.finalGrid, coins, mergeCount, maxLevel, zoneMax, collection, combo, bestCombo })
     get().updateTasks(t => t.desc.includes('合成'), result.totalEvents.length)
     get().triggerRandomEvent()
+
+    // v2.1 消消乐强化：检测最长 match-3/4/5 连锁
+    const match = findLongestMatch(result.finalGrid)
+    if (match.longest >= 3) {
+      const groups = match.groups
+      const longest = match.longest
+      let bonusCoins = 0
+      let bonusCombo = 0
+      if (longest === 3) { bonusCoins = 20; bonusCombo = 1 }
+      else if (longest === 4) { bonusCoins = 50; bonusCombo = 2 }
+      else if (longest >= 5) { bonusCoins = 200; bonusCombo = 3 }
+      // 多个连锁组额外 +10 / 组
+      bonusCoins += (groups.length - 1) * 10
+      set(s => ({ coins: s.coins + bonusCoins, combo: s.combo + bonusCombo, bestCombo: Math.max(s.bestCombo, s.combo + bonusCombo) }))
+      try { (require('@/lib/audio') as typeof import('@/lib/audio')).sfx.crit() } catch {}
+      // 5+ 连锁召唤"觉醒凝视"全屏慢动作
+      if (longest >= 5) {
+        try { (require('@/lib/audio') as typeof import('@/lib/audio')).sfx.celebrate() } catch {}
+        try { (require('@/lib/bgm') as typeof import('@/lib/bgm')).bgm.switchTo('awaken') } catch {}
+        try { (require('@/store/uiStore') as typeof import('@/store/uiStore')).useUiStore.getState().triggerAwakenBurst(groups, longest) } catch {}
+      }
+      // 4 连锁：额外触发 1 次相邻合成（找 groups 周围的 tile 对，尝试一次 slide）
+      if (longest >= 4 && groups.length > 0) {
+        const r2 = autoMergeEngine(result.finalGrid, 1)
+        if (r2.totalEvents.length > 0) {
+          // 把额外合成事件的奖励也算上
+          const isCrit2 = rollCrit()
+          const isLucky2 = computeBuff(state.currentZone).multiplier > 1
+          for (const evt of r2.totalEvents) {
+            if (!collection[evt.zone].includes(evt.level)) {
+              collection = { ...collection, [evt.zone]: [...collection[evt.zone], evt.level].sort((a, b) => a - b) }
+            }
+            if (evt.level > maxLevel) maxLevel = evt.level
+            if (evt.level > zoneMax[evt.zone]) zoneMax = { ...zoneMax, [evt.zone]: evt.level }
+            const reward = computeRewardAmount(evt.kind, combo + bonusCombo, state.pet?.affection ?? 0, evt.level)
+            let totalReward = reward
+            if (isCrit2) totalReward = totalReward * 5
+            if (isLucky2) totalReward = Math.round(totalReward * computeBuff(state.currentZone).multiplier)
+            coins += totalReward
+          }
+          set(s => ({ grid: r2.finalGrid, coins: s.coins, mergeCount: s.mergeCount + r2.totalEvents.length, maxLevel, zoneMax, collection }))
+        }
+      }
+    }
+
+    // v2.0：autoMerge 末尾 spawn + 死局检测
+    get().trySpawnOne()
+    get().checkDeadlock()
+
     return result
   },
 
