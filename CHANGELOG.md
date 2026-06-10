@@ -1,5 +1,74 @@
 # Changelog
 
+## v0.9.0 (2026-06-09) — 羁绊与世界版本
+
+### 新增
+- **6 对主题羁绊**（`src/lib/synergies.ts` + `SynergiesPanel.tsx`）
+  - 万物有灵（生物圈+植物界）/ 魔力回路（元素殿+神话殿）/ 人间烟火（美食街+人文阁）
+  - 星际交响（星际航+音符符）/ 城市蓝图（建筑谱+复古厅）/ 梦境潜游（梦境海+深蓝海）
+  - 双方区域都 Lv.10+ → 解锁被动 buff（+10% 收益 / +2% 暴击 / +5% 幸运）
+- **世界进度环**（`WorldRing.tsx`）
+  - 12 主题按段绘 SVG 环
+  - 凑齐整圈（12 区都 Lv.11）→ 解锁「传说蛋」彩蛋
+- **视觉打磨工具**（`src/lib/visual-tune.ts`）
+  - EASE 缓动统一（pop/slide/bounce/smooth/elastic）
+  - `burstParticles(x, y, count, color)` 通用粒子喷射
+  - `floatText(x, y, text, color)` 通用浮动文字
+- **更多 Tab 加「主题羁绊」入口**
+
+### 验证
+- TypeScript: 0 错误
+- Vitest: 37/37 通过
+- Vite build: 118.34 KB gzip（99 modules）
+
+---
+
+## v0.8.0 (2026-06-09) — 操作与惊喜版本
+
+### 新增
+- **方向键 Dpad**（`src/components/grid/Dpad.tsx`）
+  - 网格下方 4 个固定方向按钮 ↑↓←→
+  - 移动端单手可玩，保留滑动手势
+- **消消乐 3 连锁动**（`detectMatch3` + `match3-pulse` CSS）
+  - 3 个同色同级排成行/列 → 整条线粉红脉冲
+  - 一键合并按钮显示「3连×N」预提示
+- **4 款限定蛋壳**（`src/lib/special-eggs.ts`）
+  - 💎 钻石蛋（4 段） / ⭐ 星辰蛋 / 🌸 樱花蛋 / 🌑 暗夜蛋（5 段）
+  - 5% 概率抽取，出蛋后 bonus 15-50 币
+  - 蛋壳渐变色 + 光晕动画
+- **神赐事件**：8% 概率直接给 Lv.6 棋子入网
+- **gacha_frenzy 事件期间免单**
+
+### 验证
+- TypeScript: 0 错误
+- Vitest: 37/37 通过
+- Vite build: 116.52 KB gzip（96 modules）
+
+---
+
+## v0.7.0 (2026-06-09) — 爽感与事件版本
+
+### 新增
+- **宠物早产**（`gameStore.ts`）
+  - Lv.10 → 蛋：改为 Lv.4 → 蛋
+  - Lv.11 → 孵化：改为 Lv.5 → 孵化
+  - 玩家 2 分钟内必拿宠物
+- **一键合并**（`src/lib/auto-merge.ts` + `AutoMergeButton.tsx`）
+  - 贪心反复找最优方向滑动，最多 6 轮
+  - 一次合成多事件 → 一次暴击计算
+- **8 种随机事件**（`src/lib/events.ts` + `RandomEventModal.tsx`）
+  - 宠物撒娇 / 元素共鸣 / 时间倒流 / 双倍时段 / 连击风暴 / 扭蛋狂欢 / 守护之盾 / 神秘访客
+  - 全屏事件卡片 + 倒计时进度条
+  - 持续类 buff 写入 `activeEventBuff`（右上角 EventBuffBadge 显示）
+- **Gashapon 集成 gacha_frenzy 免单**
+
+### 验证
+- TypeScript: 0 错误
+- Vitest: 37/37 通过
+- Vite build: 115.41 KB gzip（94 modules）
+
+---
+
 ## v0.6.0 (2026-06-09) — 社交与分享版本
 
 ### 新增
