@@ -49,6 +49,10 @@ interface UiState {
   showLeaderboard: boolean
   openLeaderboard: () => void
   closeLeaderboard: () => void
+  // v0.9 主题羁绊
+  showSynergies: boolean
+  openSynergies: () => void
+  closeSynergies: () => void
 }
 
 let _toastId = 0
@@ -113,4 +117,8 @@ export const useUiStore = create<UiState>((set) => ({
   showLeaderboard: false,
   openLeaderboard: () => set({ showLeaderboard: true }),
   closeLeaderboard: () => set({ showLeaderboard: false }),
+  // v0.9 主题羁绊
+  showSynergies: false,
+  openSynergies: () => set({ showSynergies: true }),
+  closeSynergies: () => set({ showSynergies: false }),
 }))

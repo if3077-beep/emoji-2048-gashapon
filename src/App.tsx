@@ -25,6 +25,7 @@ import { SharePanel } from '@/components/ui/SharePanel'
 import { LeaderboardPanel } from '@/components/ui/LeaderboardPanel'
 import { RandomEventModal } from '@/components/ui/RandomEventModal'
 import { EventBuffBadge } from '@/components/ui/EventBuffBadge'
+import { SynergiesPanel } from '@/components/ui/SynergiesPanel'
 
 const TABS = [
   { id: 'home' as const, icon: '🏠', label: '主页' },
@@ -132,6 +133,7 @@ export default function App() {
       <LeaderboardPanel />
       <RandomEventModal />
       <EventBuffBadge />
+      <SynergiesPanel />
     </div>
   )
 }

@@ -4,6 +4,7 @@
 import { Gashapon } from '@/components/gashapon/Gashapon'
 import { MergeGrid } from '@/components/grid/MergeGrid'
 import { AutoMergeButton } from '@/components/ui/AutoMergeButton'
+import { WorldRing } from '@/components/ui/WorldRing'
 import { CoinDisplay } from '@/components/ui/CoinDisplay'
 import { useGameStore } from '@/store/gameStore'
 import { useUiStore } from '@/store/uiStore'
@@ -154,6 +155,9 @@ export function HomeTab() {
 
       {/* v0.7 一键合并按钮 */}
       <AutoMergeButton />
+
+      {/* v0.9 世界进度环 */}
+      <WorldRing />
 
       {/* 7 日挑战 */}
       <Challenges challenges={challenges} />

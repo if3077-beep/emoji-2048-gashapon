@@ -194,6 +194,19 @@ export function MoreTab() {
         </button>
       </div>
 
+      {/* v0.9 入口：主题羁绊 */}
+      <button
+        onClick={() => useUiStore.getState().openSynergies()}
+        className="touch-target glass flex w-full items-center gap-2 rounded-2xl p-3 active:scale-95"
+      >
+        <span className="text-2xl">🔗</span>
+        <div className="flex-1 text-left">
+          <div className="text-xs text-white/80 font-medium">主题羁绊</div>
+          <div className="text-[9px] text-white/40">6 对被动加成 · 凑齐 Lv.10 解锁</div>
+        </div>
+        <span className="text-[10px] text-pink-300">→</span>
+      </button>
+
       {/* 设置 */}
       <div className="glass rounded-2xl p-3">
         <div className="text-xs text-white/50 mb-2">⚙️ 设置</div>
