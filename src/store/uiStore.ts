@@ -84,7 +84,15 @@ export const useUiStore = create<UiState>((set) => ({
   },
   bursts: [],
   pushBurst: (b) => {
-    set(s => ({ bursts: [...s.bursts, b] }))
+    set(s => {
+      // v2.2 限流：最多同时显示 3 个 burst，避免屏幕 emoji 堆积
+      const next = [...s.bursts, b]
+      if (next.length > 3) {
+        // 移除最旧的几个（按 id 时间戳排序）
+        return { bursts: next.slice(next.length - 3) }
+      }
+      return { bursts: next }
+    })
   },
   settleBurst: (id) => {
     set(s => ({ bursts: s.bursts.filter(b => b.id !== id) }))

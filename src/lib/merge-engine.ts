@@ -71,9 +71,31 @@ export const deadlockRelief = (grid: Grid): { grid: Grid; cleared: number; kept:
       }
       kept++
       return cell
-    })
+    }),
   )
   return { grid: newGrid, cleared, kept }
+}
+
+/**
+ * v2.2 玩家提示：4 个方向跑 slide 找出"最优方向"
+ * - 优先选能产生最多合并事件的方向
+ * - 都没有事件时选能产生最多 moves（不卡死）的方向
+ * - 返回 { dir, events, moves }  找不到则 dir = null
+ */
+export const findBestHint = (
+  grid: Grid,
+  collection?: Record<ZoneId, number[]>,
+): { dir: Dir | null; events: number; moves: number } => {
+  const dirs: Dir[] = ['up', 'down', 'left', 'right']
+  let best: { dir: Dir | null; events: number; moves: number } = { dir: null, events: 0, moves: 0 }
+  for (const d of dirs) {
+    const r = slide(grid, d, collection)
+    if (r.events.length > best.events) best = { dir: d, events: r.events.length, moves: r.moves.length }
+    else if (r.events.length === best.events && r.moves.length > best.moves) {
+      best = { dir: d, events: r.events.length, moves: r.moves.length }
+    }
+  }
+  return best
 }
 
 export const drawCapsule = (zone: ZoneId, petLevelBoost = 0): Tile => {

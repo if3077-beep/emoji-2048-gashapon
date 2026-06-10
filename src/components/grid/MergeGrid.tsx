@@ -8,7 +8,7 @@ import { useGameStore } from '@/store/gameStore'
 import { useUiStore } from '@/store/uiStore'
 import { ZONES, GRID_SIZE, getLevelLabel } from '@/data/emoji-trees'
 import { sfx, resumeAudio } from '@/lib/audio'
-import { levelToTier, type Grid, type Tile, findZoneMax } from '@/lib/merge-engine'
+import { levelToTier, type Grid, type Tile, findZoneMax, findBestHint } from '@/lib/merge-engine'
 import { calcReward, getReward, type EventKind } from '@/lib/event-rewards'
 import { useRef, useState, useCallback, useEffect } from 'react'
 import gsap from 'gsap'
@@ -51,6 +51,9 @@ export function MergeGrid() {
   const [sliding, setSliding] = useState<SlideState>({ active: false, startX: 0, startY: 0, startT: 0 })
   const [animTiles, setAnimTiles] = useState<Set<string>>(new Set())
   const [lastDir, setLastDir] = useState<Dir | null>(null)  // v1.2 滑动方向轨迹
+  // v2.2 提示：当前最佳方向 + 显示窗口期
+  const [hintDir, setHintDir] = useState<Dir | null>(null)
+  const [hintFlashAt, setHintFlashAt] = useState(0)
   const containerRef = useRef<HTMLDivElement>(null)
   const THRESHOLD = 28  // 触发滑动的最小距离
 
@@ -178,6 +181,26 @@ export function MergeGrid() {
     setSliding({ active: false, startX: 0, startY: 0, startT: 0 })
   }
 
+  // v2.2 "💡 提示"：算 best hint 方向并闪 1.5s
+  const showHint = useCallback(() => {
+    const h = findBestHint(grid)
+    if (!h.dir) {
+      pushToast('没有可合并的方向', '🪦', 1)
+      return
+    }
+    setHintDir(h.dir)
+    setHintFlashAt(Date.now())
+    const dirText = h.dir === 'up' ? '上滑 ⬆️' : h.dir === 'down' ? '下滑 ⬇️' : h.dir === 'left' ? '左滑 ⬅️' : '右滑 ➡️'
+    pushToast(`${dirText} · ${h.events} 合成`, '💡', 2)
+    sfx.tap()
+    setTimeout(() => setHintDir(null), 1500)
+  }, [grid, pushToast])
+
+  // v2.2：滑动后自动隐藏 hint
+  useEffect(() => {
+    setHintDir(null)
+  }, [grid])
+
   // v0.8 3 连锁动：检测到 match3 → 整行整列高亮
   const match3Lines = detectMatch3(grid)
 
@@ -273,8 +296,16 @@ export function MergeGrid() {
         <span>滑动合并 · 方向键 / 触屏</span>
         <span className="ml-2 rounded-full bg-white/5 px-1.5 py-0.5 font-mono">C×{bestCombo}</span>
       </div>
-      <div className="mt-2">
-        <Dpad onSwipe={(d) => handleDirection(d, 0, 0)} />
+      <div className="mt-2 flex items-center justify-center gap-3">
+        <Dpad onSwipe={(d) => handleDirection(d, 0, 0)} hintDir={hintDir} />
+        {/* v2.2 提示按钮 */}
+        <button
+          onClick={showHint}
+          className="touch-target flex h-10 w-10 items-center justify-center rounded-xl bg-gold-500/15 text-xl ring-1 ring-gold-400/30 active:scale-90 transition-all hover:bg-gold-500/25"
+          title="提示最佳方向"
+        >
+          💡
+        </button>
       </div>
     </div>
   )

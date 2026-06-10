@@ -1,7 +1,7 @@
 # BUG_AUDIT.md — emoji-2048-gashapon
 
-> 最后自查：2026-06-10（v1.3 push 后）
-> 6 个 GitHub Pages 版本（v0.4 → v1.3）已 push，37 测试 0 错误，build 122.68 KB gzip。
+> 最后自查：2026-06-10（v2.2 push 后）
+> 9 个 GitHub Pages 版本（v0.4 → v2.2）已 push，37 测试 0 错误，build 124.95 KB gzip。
 
 ## 1. 用户原话反馈 → 修复/打补丁映射
 
@@ -14,6 +14,9 @@
 | "底部第二个栏目可能没必要 / 强化" | v1.2 | ✅ 已加 | MergeTab 新增"🎰 扭蛋机"折叠按钮，展开后内嵌 Gashapon + 主题进度条（已收集 0/11 + 进度条渐变） |
 | "底部其他栏目在电脑上显示不居中" | v1.2 | ✅ 已修 | App.tsx 顶层 `mx-auto max-w-[480px]` + nav `mx-auto max-w-[480px]`，电脑端整体居中 |
 | "迭代优化 BGM、音效、动效" | v1.3 | ✅ 已加 | BGM 4 层（melody+bass+chord+arp）+ 低通滤波 + 合成 IR reverb + 启动淡入/停止淡出；新增 5 个音效（achievement/petBorn/petPet/crit/whoosh）并 wire 到对应事件 |
+| "2048 有几率会卡死，不能合成" | v2.0 | ✅ 已修 | `slide` action 末尾补 `trySpawnOne()` + `checkDeadlock()`，恢复经典 2048"滑动后必 spawn 1 个"行为；满格 + 4 方向无任何可合成时弹"🪦 卡死"提示 + 一键降级（清 Lv.1-3 保留 Lv.4+，奖 50🪙）|
+| "另外定部还是会emoji堆积" | v2.2 | ✅ 已修 | uiStore `pushBurst` 限流最多同时显示 3 个 burst，超过自动丢弃最旧的；提示按钮 + 方向高亮引导玩家主动合成减少 burst 触发 |
+| "继续优化2048和消消乐玩法 ... 迭代三次" | v2.0/v2.1/v2.2 | ✅ 3 个版本迭代 | v2.0 修卡死；v2.1 消消乐强化（3/4/5 连锁奖励 + 觉醒 burst + 二次合成）；v2.2 提示系统 + 限流 |
 
 ## 2. 审计到的所有 bug 与修复
 
@@ -33,6 +36,11 @@
 | BUG-12 | 🟢 P3 | BGM 启动/停止是硬切 | v1.3 | ✅ 已加 1.2s 淡入 / 0.5s 淡出 + ctx.close() |
 | BUG-13 | 🟢 P3 | 现有 sfx 没有 achievement / petBorn / crit / petPet / whoosh | v1.3 | ✅ 已加 5 个 sfx + wire 到 6 个调用点 |
 | BUG-14 | 🟢 P3 | crit 事件只用 sfx.rare()，不够爽 | v1.3 | ✅ 已用 sfx.crit()（三连鼓 + 滑音）替换 |
+| BUG-15 | 🔴 P0 | `slide` action 完成后**完全没有 spawn 新 tile**，经典 2048 每次滑动都会生成 1 个新胶囊，导致玩家高概率卡死在无法合成的状态 | v2.0 | ✅ 已在 slide + autoMerge 末尾补 `trySpawnOne()` + `checkDeadlock()` |
+| BUG-16 | 🟠 P1 | 满格 + 4 方向无可滑动时无任何提示，玩家不知道下一步 | v2.0 | ✅ 已加 `DeadlockPanel`：🪦 满格卡死 + 一键兜底清场（+50🪙），挂到 MergeTab |
+| BUG-17 | 🟢 P2 | 连锁奖励只看 combo 数，没有按 match-3/4/5 长度细分，消消乐玩法不够爽 | v2.1 | ✅ 已加 `findLongestMatch` 扫描横/竖 3+ 连锁：3 链+20🪙+1 combo；4 链+50🪙+2 combo+再触发一次相邻合成；5+ 链+200🪙+3 combo+召唤觉醒 burst |
+| BUG-18 | 🟢 P2 | `pushBurst` 无上限，5 连锁时屏上 burst 全部堆在中央形成 emoji 山 | v2.2 | ✅ uiStore `pushBurst` 限流最多 3 个，超出截断 |
+| BUG-19 | 🟢 P2 | 玩家卡住时不知道往哪滑，只能凭感觉 | v2.2 | ✅ 加 `findBestHint` 函数 + MergeGrid 底部"💡 提示"按钮 + Dpad 方向金色 pulse 高亮 1.5s |
 
 ## 3. PM 视角自查（仍可继续打磨的点）
 
@@ -77,6 +85,9 @@ tests/merge-engine.test.ts (20 tests) - 合并引擎
 | v1.1 | 121.03 KB | 100 | +心情/成就/故事 |
 | v1.2 | 121.75 KB | 100 | +视觉打磨 |
 | v1.3 | 122.68 KB | 100 | +BGM/音效 |
+| v2.0 | 123.38 KB | 101 | +修卡死 + 死局兜底 |
+| v2.1 | 124.56 KB | 102 | +消消乐强化 + 觉醒 burst |
+| v2.2 | 124.95 KB | 102 | +提示按钮 + burst 限流 |
 
 每个版本 ≤ +3 KB 增量，符合"零依赖 + 即时合成"的设计原则。
 
