@@ -78,7 +78,48 @@ export function MergeGrid() {
       const end = result.moves[result.moves.length - 1]?.to
       const isHorizontal = dir === 'left' || dir === 'right'
 
-      // 2) 起点光球：紫青双层（v6.0 替换黄色）
+      // 1.5) v10.1 棋子移动拖影：每个 from≠to 的 cell 在 from 位置生 3 颗半透明 emoji 拖影（紫青色）
+      const trailColor = zoneColor(currentZone)
+      const beforeGrid = useGameStore.getState().grid
+      result.moves.forEach((m, idx) => {
+        if (m.from[0] === m.to[0] && m.from[1] === m.to[1]) return
+        const tile = beforeGrid[m.from[0]]?.[m.from[1]]
+        if (!tile) return
+        const trailEmoji = getEmoji(tile)
+        const fromX = (m.from[1] + 0.5) * cellW + 12
+        const fromY = (m.from[0] + 0.5) * cellH + 12
+        // 向 to 方向轻微位移，增强"拖"感
+        const tx = (m.to[1] - m.from[1]) * 6
+        const ty = (m.to[0] - m.from[0]) * 6
+        const stops = [
+          { op: 0.75, sc: 0.95, dy: 0 },
+          { op: 0.5, sc: 0.82, dy: 0.05 },
+          { op: 0.28, sc: 0.7, dy: 0.1 },
+        ]
+        stops.forEach((s, sIdx) => {
+          const t = document.createElement('div')
+          t.textContent = trailEmoji
+          t.className = 'pointer-events-none absolute z-10'
+          t.style.cssText = `left:0;top:0;width:${cellW}px;height:${cellH}px;display:flex;align-items:center;justify-content:center;font-size:28px;color:${trailColor};opacity:0;filter:drop-shadow(0 0 4px ${trailColor}aa);transform:translate(${fromX - cellW / 2}px,${fromY - cellH / 2}px);`
+          grid.appendChild(t)
+          gsap.fromTo(
+            t,
+            { x: 0, y: 0, scale: 1, opacity: s.op },
+            {
+              x: tx,
+              y: ty,
+              scale: s.sc,
+              opacity: 0,
+              duration: 0.22,
+              delay: sIdx * 0.05 + idx * 0.015,
+              ease: 'power1.out',
+              onComplete: () => t.remove(),
+            },
+          )
+        })
+      })
+
+      // 2) 起点光球：紫青弱光晕（v10.0 缩小）
       if (start) {
         const startX = (start[1] + 0.5) * cellW + 12
         const startY = (start[0] + 0.5) * cellH + 12
@@ -89,49 +130,49 @@ export function MergeGrid() {
         inner.style.cssText = `width:100%;height:100%;border-radius:50%;background:${startBallInner};box-shadow:${startBallShadow};`
         ball.appendChild(inner)
         grid.appendChild(ball)
-        gsap.fromTo(ball, { scale: 0, opacity: 0 }, { scale: 1.4, opacity: 1, duration: 0.15, ease: 'power2.out' })
-        gsap.to(ball, { scale: 0.3, opacity: 0, duration: 0.5, delay: 0.2, ease: 'power2.in', onComplete: () => ball.remove() })
+        gsap.fromTo(ball, { scale: 0, opacity: 0 }, { scale: 0.6, opacity: 1, duration: 0.15, ease: 'power2.out' })
+        gsap.to(ball, { scale: 0.2, opacity: 0, duration: 0.4, delay: 0.15, ease: 'power2.in', onComplete: () => ball.remove() })
       }
 
-      // 3) 流光带（紫青渐变 6px 宽/高带，0.4s GSAP 沿方向滑过整个 grid）
+      // 3) 流光带（v10.0 改 2px 细线 + 4/8px 弱光晕）
       if (end) {
         const endX = (end[1] + 0.5) * cellW + 12
         const endY = (end[0] + 0.5) * cellH + 12
         const beam = document.createElement('div')
         beam.className = 'pointer-events-none absolute z-20'
         if (isHorizontal) {
-          // 横向：竖条 width 6px 滑过
+          // 横向：竖条 width 2px 滑过
           const isRight = dir === 'right'
           const beamStyle = BEAM_HStyle(rect.height - 74)
-          beam.style.cssText = `left:0;top:0;width:6px;height:${rect.height - 74}px;transform:translate(${isRight ? 0 : rect.width - 6}px,12px);background:${beamStyle.background};box-shadow:${beamStyle.boxShadow};`
+          beam.style.cssText = `left:0;top:0;width:2px;height:${rect.height - 74}px;transform:translate(${isRight ? 0 : rect.width - 2}px,12px);background:${beamStyle.background};box-shadow:${beamStyle.boxShadow};`
           grid.appendChild(beam)
-          gsap.fromTo(beam, { x: 0 }, { x: isRight ? rect.width - 6 : -(rect.width - 6), duration: 0.4, ease: 'power2.out' })
+          gsap.fromTo(beam, { x: 0 }, { x: isRight ? rect.width - 2 : -(rect.width - 2), duration: 0.4, ease: 'power2.out' })
           gsap.to(beam, { opacity: 0, duration: 0.2, delay: 0.35, onComplete: () => beam.remove() })
         } else {
-          // 纵向：横条 height 6px 滑过
+          // 纵向：横条 height 2px 滑过
           const isDown = dir === 'down'
           const beamStyle = BEAM_VStyle(rect.width - 24)
-          beam.style.cssText = `left:0;top:0;width:${rect.width - 24}px;height:6px;transform:translate(12px,${isDown ? 0 : rect.height - 80}px);background:${beamStyle.background};box-shadow:${beamStyle.boxShadow};`
+          beam.style.cssText = `left:0;top:0;width:${rect.width - 24}px;height:2px;transform:translate(12px,${isDown ? 0 : rect.height - 80}px);background:${beamStyle.background};box-shadow:${beamStyle.boxShadow};`
           grid.appendChild(beam)
           gsap.fromTo(beam, { y: 0 }, { y: isDown ? rect.height - 86 : -(rect.height - 86), duration: 0.4, ease: 'power2.out' })
           gsap.to(beam, { opacity: 0, duration: 0.2, delay: 0.35, onComplete: () => beam.remove() })
         }
-        // v7.0 涟漪环：2 圈紫青细环从合并 cell 中心向外扩散（替代大光晕）
+        // v10.0 涟漪环：2 圈紫青细环从合并 cell 中心向外扩散（缩小到 1.6→2.2）
         const ringColor = zoneColor(currentZone)
-        const baseSize = Math.max(cellW, cellH) * 0.4
+        const baseSize = Math.max(cellW, cellH) * 0.3
         for (let i = 0; i < 2; i++) {
           const ring = document.createElement('div')
           ring.className = 'pointer-events-none absolute z-30'
           const size = baseSize
-          const style = rippleRing(i === 0 ? AURORA.cyan : AURORA.purple, i === 0 ? 2 : 1)
+          const style = rippleRing(i === 0 ? AURORA.cyan : AURORA.purple, i === 0 ? 1 : 1)
           ring.style.cssText = `left:0;top:0;width:${size}px;height:${size}px;transform:translate(${endX - size / 2}px,${endY - size / 2}px);border:${style.border};background:${style.background};box-shadow:${style.boxShadow};border-radius:50%;`
           grid.appendChild(ring)
           gsap.fromTo(
             ring,
             { scale: 0, opacity: 0 },
-            { scale: 3.2, opacity: 0.9, duration: 0.18, delay: i * 0.12, ease: 'power2.out' },
+            { scale: 1.6, opacity: 0.8, duration: 0.18, delay: i * 0.1, ease: 'power2.out' },
           )
-          gsap.to(ring, { scale: 4.4, opacity: 0, duration: 0.32, delay: 0.18 + i * 0.12, ease: 'power2.in', onComplete: () => ring.remove() })
+          gsap.to(ring, { scale: 2.2, opacity: 0, duration: 0.3, delay: 0.18 + i * 0.1, ease: 'power2.in', onComplete: () => ring.remove() })
         }
       }
 
@@ -145,9 +186,15 @@ export function MergeGrid() {
           { boxShadow: cellFlash(currentZone) },
           { boxShadow: 'inset 0 0 0 0 rgba(255,255,255,0), 0 0 0 rgba(255,255,255,0)', duration: 0.4, delay: i * 0.04, ease: 'power2.out' },
         )
+        // v10.1 落位回弹：moved cell y -3→0 bounce 0.3s（独立于合并浮起）
+        gsap.fromTo(
+          cell,
+          { y: -3 },
+          { y: 0, duration: 0.3, delay: i * 0.04 + 0.08, ease: 'bounce.out' },
+        )
       })
 
-      // 4b) v6.0 合并位置 tile 浮起（紫青色阴影）
+      // 4b) v10.0 合并位置 tile 浮起（弱紫青阴影 -6 + scale 1.06）
       const mergeSet = new Set(result.events.map(e => e.pos.join(',')))
       Array.from(mergeSet).forEach((posKey, i) => {
         const cell = grid.querySelector(`[data-cell="${posKey}"]`) as HTMLElement | null
@@ -156,13 +203,13 @@ export function MergeGrid() {
           cell,
           { y: 0, scale: 1, boxShadow: mergeFloatShadow(currentZone) },
           {
-            y: -10,
-            scale: 1.12,
-            duration: 0.18,
+            y: -6,
+            scale: 1.06,
+            duration: 0.16,
             delay: i * 0.04,
             ease: 'power2.out',
             onComplete: () => {
-              gsap.to(cell, { y: 0, scale: 1, duration: 0.32, ease: 'bounce.out' })
+              gsap.to(cell, { y: 0, scale: 1, duration: 0.3, ease: 'bounce.out' })
               gsap.to(cell, { clearProps: 'boxShadow', duration: 0.4, delay: 0.05 })
             },
           },
@@ -303,7 +350,7 @@ export function MergeGrid() {
                 ep.textContent = newEmoji
                 ep.className = 'pointer-events-none absolute left-1/2 top-1/2 z-30 -translate-x-1/2 -translate-y-1/2'
                 ep.style.fontSize = newLevel >= 10 ? '26px' : '22px'
-                ep.style.filter = `drop-shadow(0 0 8px ${dropShadow(isCrit, isLucky)})`
+                ep.style.filter = `drop-shadow(0 0 6px ${dropShadow(isCrit, isLucky)})`
                 cell.appendChild(ep)
                 // 360° 均匀分布 + 一点随机
                 const baseAngle = (p / particleCount) * Math.PI * 2

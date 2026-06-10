@@ -58,9 +58,9 @@ export const dropShadow = (isCrit: boolean, isLucky: boolean) => {
   return AURORA.cyan
 }
 
-/** 起点光球（紫青双色层） */
-export const startBallInner = `radial-gradient(circle, ${AURORA.white}, ${AURORA.cyan} 30%, ${AURORA.purple} 70%, transparent 100%)`
-export const startBallShadow = `0 0 28px ${AURORA.cyan}cc, 0 0 56px ${AURORA.purple}88`
+/** 起点光球（v10.0 简化：白→青 弱光晕） */
+export const startBallInner = `radial-gradient(circle, ${AURORA.white}ee, ${AURORA.cyan}cc 40%, transparent 100%)`
+export const startBallShadow = `0 0 6px ${AURORA.cyan}aa`
 
 /** 终点爆裂（青粉） */
 export const endBurstInner = `radial-gradient(circle, ${AURORA.white}, ${AURORA.cyan} 40%, transparent 70%)`
@@ -72,20 +72,20 @@ export const cellFlash = (zone?: ZoneId) => {
   return `inset 0 0 0 2px ${AURORA.white}ee, 0 0 16px ${c}cc`
 }
 
-/** 合并位置浮起阴影（紫青） */
+/** 合并位置浮起阴影（v10.0 收紧到 6px） */
 export const mergeFloatShadow = (zone?: ZoneId) => {
   const c = zone ? zoneColor(zone) : AURORA.cyan
-  return `0 -8px 0 0 ${c}55, 0 0 22px ${c}cc`
+  return `0 -4px 0 0 ${c}55, 0 0 6px ${c}cc`
 }
 
 /**
- * v7.0 涟漪环样式（替代大光晕）
+ * v10.0 涟漪环样式（细环，紫青）
  * - 1px 细环，紫青色
  * - 透明中心，向外扩散时 ring 加粗
  */
-export const rippleRing = (color: string = AURORA.cyan, thickness: number = 2) => ({
+export const rippleRing = (color: string = AURORA.cyan, thickness: number = 1) => ({
   border: `${thickness}px solid ${color}`,
   background: 'transparent',
-  boxShadow: `0 0 12px ${color}aa, inset 0 0 8px ${color}55`,
+  boxShadow: `0 0 4px ${color}88, inset 0 0 2px ${color}33`,
   borderRadius: '50%',
 })

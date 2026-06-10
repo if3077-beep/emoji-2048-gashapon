@@ -1,7 +1,7 @@
 # BUG_AUDIT.md — emoji-2048-gashapon
 
-> 最后自查：2026-06-10（v9 push 后）
-> 18 个 GitHub Pages 版本（v0.4 → v9）已 push，37 测试 0 错误，build 132.67 KB gzip。
+> 最后自查：2026-06-10（v10 push 后）
+> 19 个 GitHub Pages 版本（v0.4 → v10）已 push，37 测试 0 错误，build 132.98 KB gzip。
 
 ## 1. 用户原话反馈 → 修复/打补丁映射
 
@@ -40,6 +40,7 @@
 | "2048 死局可能依然在" | v8.2 | ✅ 已加自动救济 | gameStore 新增 `autoRelief()`：满格 + spawn 失败时主动清 1 颗 Lv.1-2 随机（保留 Lv.3+）+ 再 spawn 1 次 + pushToast "🪦 满格自动清理 1 颗低等级"；**DeadlockPanel**：紫红 box-shadow 0.6s 闪烁动画 `deadlockPulse`（rgba(220,38,38,0.25)↔0.6）|
 | "还是会都填满卡死 看看能不能加个刷新按钮" | v9.0 | ✅ 已加 | gameStore 新增 `refreshGrid(cost=5)`：扣币 → 保留 Lv.4+ 觉醒 → 其他清空 → spawn 2-3 个 Lv.1 + bornAt 字段；**强救济**：autoRelief 返回 0 时（无可清低等级）自动调 refreshGrid(0) 免费；**双入口**：① 货币条 [🔄 5] 按钮（-5🪙 主动）② DeadlockPanel 第三个 [🔄 刷新（免费）] 紫青渐变按钮；提示文案：扣费"🔄 刷新网格 -5🪙" / 救济"🪦 死局救济：免费刷新网格" |
 | "上方堆叠还在" | v9.1 | ✅ 已彻底解决 | 货币条：5 chip 紧凑化（每 chip gap-0.5 + px-1.5 + 字号 text-xs/text-[9px]）；BuffStrip：**5 chip flex-wrap 展开 → 1 行 3 chip + ⌄ 按钮弹 modal 详情**（modal 280px 紫红渐变背景 + 季/幸运/暴击/周末/倍率 5 行详情 + 💡 提示 + 关闭按钮，避免主区域堆叠）|
+| "合并动效大光晕不要 + 加棋子移动拖影 + 整体迭代" | v10.0/10.1/10.2 | ✅ 已迭代 3 版 | **v10.0 去大光晕**：effects.ts 起点光球 radial 白→青→紫 4 色层→简化为 白→青 2 色（去掉 30%-70% 紫强对比），box-shadow 28+56px 双层→6px 单层；BEAM 流光带 6px 紫青渐变→2px 纯青，box-shadow 18+36px→4+8px；mergeFloatShadow 22px→6px；rippleRing 12+8px→4+2px；MergeGrid 起点光球 scale 1.4→0.6；流光带 6px→2px；合并浮起 y -10→-6 / scale 1.12→1.06；涟漪环 scale 3.2→4.4→1.6→2.2。**v10.1 棋子拖影 + 落位回弹**：每个 from≠to move 在 from 位置生 3 颗半透明 emoji 拖影（opacity 0.75/0.5/0.28，scale 0.95/0.82/0.7，向 to 方向位移 6px，zone 色 + 4px drop-shadow，0.22s 错开 0.05s 渐隐）；非合并 moved cell 加 y -3→0 bounce 0.3s 落位回弹。**v10.2 紫青强化**：合并 cell 加 0.15s 紫青 inset 描边（zone 色 2px + 6px 外光晕→0）；4+ 连锁紫青粒子 drop-shadow 6px→4px；合并 emoji 粒子 drop-shadow 8px→6px |
 
 ## 2. 审计到的所有 bug 与修复
 
