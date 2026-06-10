@@ -1,13 +1,15 @@
 /**
  * 图鉴 v0.6 改造：12 主题 + 收藏展示墙
  * - 点击大图查看故事 + 分享
+ * - v6.1 增加异步故事/菜谱（Wikipedia + TheMealDB）
  */
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useGameStore } from '@/store/gameStore'
 import { useUiStore } from '@/store/uiStore'
 import { ZONES, ZONE_LIST, type ZoneId, type Zone, MAX_LEVEL } from '@/data/emoji-trees'
 import { levelToTier } from '@/lib/merge-engine'
 import { getSeason, seasonEmoji } from '@/lib/season'
+import { fetchStory, type StoryResult } from '@/lib/wiki'
 
 const TIER_CLASS = ['tier-common', 'tier-rare', 'tier-epic', 'tier-legend']
 
@@ -124,11 +126,22 @@ function NodePreview({ node, zone, onClose }: { node: any; zone: Zone; onClose: 
   const openShare = useUiStore(s => s.openShare)
   const isShareable = node.level >= 10
   const season = getSeason()
+  const isFood = ['food', 'ocean'].includes(zone.id)
+  // v6.1 异步故事/菜谱
+  const [story, setStory] = useState<StoryResult | null>(null)
+  const [loading, setLoading] = useState(false)
+  const loadStory = async () => {
+    if (story || loading) return
+    setLoading(true)
+    const r = await fetchStory(node.emoji, zone.id, node.name)
+    setStory(r)
+    setLoading(false)
+  }
 
   return (
     <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={onClose}>
       <div
-        className="flex w-[300px] flex-col items-center gap-3 rounded-3xl p-5"
+        className="flex w-[88vw] max-w-md flex-col gap-3 rounded-3xl p-5"
         style={{
           background: 'linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0.02))',
           border: `1px solid ${zone.color}55`,
@@ -136,19 +149,84 @@ function NodePreview({ node, zone, onClose }: { node: any; zone: Zone; onClose: 
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="text-7xl">{node.emoji}</div>
-        <div className="text-center">
-          <div className="text-base font-bold" style={{ color: zone.color }}>
-            {node.name}
+        <div className="flex items-center gap-3">
+          <div className="text-6xl">{node.emoji}</div>
+          <div className="flex-1">
+            <div className="text-base font-bold" style={{ color: zone.color }}>
+              {node.name}
+            </div>
+            <div className="mt-0.5 text-[10px] text-white/40">Lv.{node.level} · {zone.name}</div>
+            <div className="mt-1 text-[10px] leading-relaxed text-white/60">{node.desc}</div>
           </div>
-          <div className="mt-0.5 text-[10px] text-white/40">Lv.{node.level} · {zone.name}</div>
         </div>
-        <div className="rounded-2xl bg-black/20 px-4 py-2 text-xs leading-relaxed text-white/70">
-          {node.desc}
-        </div>
+
         <div className="text-[9px] text-white/30">
           {seasonEmoji(season)} 当前 {zone.name} 享受 {node.level >= 11 ? '觉醒' : '基础'} 合成奖励
         </div>
+
+        {/* v6.1 故事/菜谱区 */}
+        <div
+          className="rounded-2xl p-3"
+          style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(167,139,250,0.25)' }}
+        >
+          {!story && !loading && (
+            <div className="flex gap-2">
+              <button
+                onClick={loadStory}
+                className="touch-target flex-1 rounded-full bg-violet-500/25 py-1.5 text-[11px] font-bold text-violet-200 ring-1 ring-violet-400/30 active:scale-95"
+                title="来自 Wikipedia 中文摘要"
+              >
+                📖 {isFood ? '故事' : '查看百科'}
+              </button>
+              {isFood && (
+                <button
+                  onClick={loadStory}
+                  className="touch-target flex-1 rounded-full bg-rose-500/25 py-1.5 text-[11px] font-bold text-rose-200 ring-1 ring-rose-400/30 active:scale-95"
+                  title="TheMealDB 菜谱"
+                >
+                  🍽️ 看菜谱
+                </button>
+              )}
+            </div>
+          )}
+          {loading && (
+            <div className="flex items-center gap-2 text-[11px] text-white/50">
+              <div className="h-3 w-3 animate-spin rounded-full border-2 border-violet-400 border-t-transparent" />
+              正在从 Wikipedia 加载…
+            </div>
+          )}
+          {story && (
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-1.5 text-[9px] text-white/40">
+                <span className="rounded-full bg-violet-500/20 px-1.5 py-0.5 font-bold text-violet-200">
+                  {story.source === 'wiki' ? '📖 Wikipedia' : story.source === 'meal' ? '🍽️ TheMealDB' : '📚 Local'}
+                </span>
+                {story.url && (
+                  <a
+                    href={story.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="underline-offset-2 hover:underline"
+                  >
+                    ↗ 打开
+                  </a>
+                )}
+              </div>
+              <div className="text-[11px] font-bold text-white/80">{story.title}</div>
+              <div className="text-[10px] leading-relaxed text-white/65">{story.extract}</div>
+              {story.thumbnail && (
+                <img
+                  src={story.thumbnail}
+                  alt={story.title}
+                  className="mt-1 max-h-32 w-full rounded-xl object-cover"
+                  loading="lazy"
+                  referrerPolicy="no-referrer"
+                />
+              )}
+            </div>
+          )}
+        </div>
+
         {isShareable ? (
           <button
             onClick={() => {
@@ -161,9 +239,9 @@ function NodePreview({ node, zone, onClose }: { node: any; zone: Zone; onClose: 
             🖼️ 分享这张
           </button>
         ) : (
-          <div className="text-[10px] text-white/30">达到 Lv.10 即可分享</div>
+          <div className="text-[10px] text-white/30 text-center">达到 Lv.10 即可分享</div>
         )}
-        <button onClick={onClose} className="text-[10px] text-white/40 underline">关闭</button>
+        <button onClick={onClose} className="text-[10px] text-white/40 underline self-center">关闭</button>
       </div>
     </div>
   )

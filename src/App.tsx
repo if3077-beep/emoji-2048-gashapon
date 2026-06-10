@@ -27,6 +27,7 @@ import { EventBuffBadge } from '@/components/ui/EventBuffBadge'
 import { SynergiesPanel } from '@/components/ui/SynergiesPanel'
 import { AchievementUnlockModal } from '@/components/ui/AchievementUnlockModal'
 import { AwakenBurst } from '@/components/ui/AwakenBurst'
+import { RareMoment } from '@/components/ui/RareMoment'
 
 // v5.0 底栏 3 列：主页（已整合合成 + 扭蛋机）/ 图鉴 / 更多
 const TABS = [
@@ -136,6 +137,7 @@ export default function App() {
       <SynergiesPanel />
       <AchievementUnlockModal />
       <AwakenBurst />
+      <RareMoment />
     </div>
   )
 }

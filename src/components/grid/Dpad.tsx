@@ -13,7 +13,7 @@ const ARROW: Record<Dir, string> = {
 
 interface DpadProps {
   onSwipe: (dir: Dir, fromX?: number, fromY?: number) => void
-  /** v2.2 高亮当前 hint 方向 */
+  /** v2.2 高亮当前 hint 方向（v6.0 改紫青极光） */
   hintDir?: Dir | null
 }
 
@@ -21,7 +21,7 @@ export function Dpad({ onSwipe, hintDir }: DpadProps) {
   const cls = (d: Dir) =>
     `touch-target flex h-10 w-10 items-center justify-center rounded-xl text-xl ring-1 transition-all ${
       hintDir === d
-        ? 'bg-gold-500 text-white ring-gold-300 animate-pulse scale-110 shadow-[0_0_18px_rgba(251,191,36,0.8)]'
+        ? 'text-white ring-violet-400/50 animate-pulse scale-110'
         : 'bg-white/10 text-white/70 ring-white/10 active:scale-90 active:bg-white/20'
     }`
   return (

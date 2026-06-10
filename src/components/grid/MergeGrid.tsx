@@ -6,7 +6,7 @@
  */
 import { useGameStore } from '@/store/gameStore'
 import { useUiStore } from '@/store/uiStore'
-import { ZONES, GRID_SIZE, getLevelLabel } from '@/data/emoji-trees'
+import { ZONES, GRID_SIZE, getLevelLabel, getEmoji, getName } from '@/data/emoji-trees'
 import { sfx, resumeAudio } from '@/lib/audio'
 import { levelToTier, type Grid, type Tile, findZoneMax, findBestHint } from '@/lib/merge-engine'
 import { calcReward, getReward, type EventKind } from '@/lib/event-rewards'
@@ -14,18 +14,13 @@ import { useRef, useState, useCallback, useEffect } from 'react'
 import gsap from 'gsap'
 import { Dpad } from './Dpad'
 import { detectMatch3, findLongestMatch } from '@/lib/auto-merge'
+import {
+  AURORA, TRAIL_GRADIENT, BEAM_HStyle, BEAM_VStyle, zoneColor, zoneGlow,
+  startBallInner, startBallShadow, endBurstInner, endBurstShadow,
+  cellFlash, mergeFloatShadow, flyTextColor, dropShadow,
+} from '@/lib/effects'
 
 const TIER_CLASS = ['tier-common', 'tier-rare', 'tier-epic', 'tier-legend']
-
-const getEmoji = (t: Tile): string => {
-  if (t.level <= 11) return ZONES[t.zone].tree[t.level - 1]?.emoji ?? '·'
-  return ZONES[t.zone].awakenedEmoji
-}
-
-const getName = (t: Tile): string => {
-  if (t.level <= 11) return ZONES[t.zone].tree[t.level - 1]?.name ?? '·'
-  return ZONES[t.zone].awakenedName
-}
 
 type Dir = 'up' | 'down' | 'left' | 'right'
 
@@ -80,7 +75,7 @@ export function MergeGrid() {
       const end = result.moves[result.moves.length - 1]?.to
       const isHorizontal = dir === 'left' || dir === 'right'
 
-      // 2) 起点光球：放射状 burst + 缩放
+      // 2) 起点光球：紫青双层（v6.0 替换黄色）
       if (start) {
         const startX = (start[1] + 0.5) * cellW + 12
         const startY = (start[0] + 0.5) * cellH + 12
@@ -88,64 +83,65 @@ export function MergeGrid() {
         ball.className = 'pointer-events-none absolute z-30'
         ball.style.cssText = `left:0;top:0;width:${cellW}px;height:${cellH}px;transform:translate(${startX - cellW / 2}px,${startY - cellH / 2}px);`
         const inner = document.createElement('div')
-        inner.style.cssText = `width:100%;height:100%;border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,0.95),rgba(251,191,36,0.7) 30%,rgba(251,191,36,0) 70%);box-shadow:0 0 32px rgba(251,191,36,0.95),0 0 64px rgba(251,146,60,0.6);`
+        inner.style.cssText = `width:100%;height:100%;border-radius:50%;background:${startBallInner};box-shadow:${startBallShadow};`
         ball.appendChild(inner)
         grid.appendChild(ball)
         gsap.fromTo(ball, { scale: 0, opacity: 0 }, { scale: 1.4, opacity: 1, duration: 0.15, ease: 'power2.out' })
         gsap.to(ball, { scale: 0.3, opacity: 0, duration: 0.5, delay: 0.2, ease: 'power2.in', onComplete: () => ball.remove() })
       }
 
-      // 3) 流光带（用 linear-gradient + animation 0.45s 扫过整个 grid）
+      // 3) 流光带（紫青渐变 6px 宽/高带，0.4s GSAP 沿方向滑过整个 grid）
       if (end) {
         const endX = (end[1] + 0.5) * cellW + 12
         const endY = (end[0] + 0.5) * cellH + 12
         const beam = document.createElement('div')
         beam.className = 'pointer-events-none absolute z-20'
         if (isHorizontal) {
-          // 横向：竖条 width 4px 滑过
+          // 横向：竖条 width 6px 滑过
           const isRight = dir === 'right'
-          beam.style.cssText = `left:0;top:0;width:6px;height:${rect.height - 74}px;transform:translate(${isRight ? 0 : rect.width - 6}px,12px);background:linear-gradient(180deg,transparent,rgba(251,191,36,0.95) 20%,rgba(255,255,255,1) 50%,rgba(251,191,36,0.95) 80%,transparent);box-shadow:0 0 24px rgba(251,191,36,0.9),0 0 48px rgba(255,255,255,0.5);`
+          const beamStyle = BEAM_HStyle(rect.height - 74)
+          beam.style.cssText = `left:0;top:0;width:6px;height:${rect.height - 74}px;transform:translate(${isRight ? 0 : rect.width - 6}px,12px);background:${beamStyle.background};box-shadow:${beamStyle.boxShadow};`
           grid.appendChild(beam)
           gsap.fromTo(beam, { x: 0 }, { x: isRight ? rect.width - 6 : -(rect.width - 6), duration: 0.4, ease: 'power2.out' })
           gsap.to(beam, { opacity: 0, duration: 0.2, delay: 0.35, onComplete: () => beam.remove() })
         } else {
           // 纵向：横条 height 6px 滑过
           const isDown = dir === 'down'
-          beam.style.cssText = `left:0;top:0;width:${rect.width - 24}px;height:6px;transform:translate(12px,${isDown ? 0 : rect.height - 80}px);background:linear-gradient(90deg,transparent,rgba(251,191,36,0.95) 20%,rgba(255,255,255,1) 50%,rgba(251,191,36,0.95) 80%,transparent);box-shadow:0 0 24px rgba(251,191,36,0.9),0 0 48px rgba(255,255,255,0.5);`
+          const beamStyle = BEAM_VStyle(rect.width - 24)
+          beam.style.cssText = `left:0;top:0;width:${rect.width - 24}px;height:6px;transform:translate(12px,${isDown ? 0 : rect.height - 80}px);background:${beamStyle.background};box-shadow:${beamStyle.boxShadow};`
           grid.appendChild(beam)
           gsap.fromTo(beam, { y: 0 }, { y: isDown ? rect.height - 86 : -(rect.height - 86), duration: 0.4, ease: 'power2.out' })
           gsap.to(beam, { opacity: 0, duration: 0.2, delay: 0.35, onComplete: () => beam.remove() })
         }
-        // 终点爆裂：径向 burst
+        // 终点爆裂：紫青径向 burst
         const burst = document.createElement('div')
         burst.className = 'pointer-events-none absolute z-30'
-        burst.style.cssText = `left:0;top:0;width:60px;height:60px;transform:translate(${endX - 30}px,${endY - 30}px);background:radial-gradient(circle,rgba(255,255,255,0.95),rgba(251,191,36,0.7) 40%,transparent 70%);`
+        burst.style.cssText = `left:0;top:0;width:60px;height:60px;transform:translate(${endX - 30}px,${endY - 30}px);background:${endBurstInner};box-shadow:${endBurstShadow};`
         grid.appendChild(burst)
         gsap.fromTo(burst, { scale: 0, opacity: 0 }, { scale: 1.6, opacity: 1, duration: 0.18, ease: 'power2.out' })
         gsap.to(burst, { scale: 2.4, opacity: 0, duration: 0.42, delay: 0.12, ease: 'power2.in', onComplete: () => burst.remove() })
       }
 
-      // 4) 移动过的 cell 依次闪光（沿轨迹方向 30ms 延迟）
+      // 4) 移动过的 cell 依次闪光（紫青白光）
       const movedList = result.moves.map(m => m.to)
       movedList.forEach((pos, i) => {
         const cell = grid.querySelector(`[data-cell="${pos[0]},${pos[1]}"]`) as HTMLElement | null
         if (!cell) return
         gsap.fromTo(
           cell,
-          { boxShadow: 'inset 0 0 0 2px rgba(255,255,255,0.95), 0 0 16px rgba(255,255,255,0.7)' },
+          { boxShadow: cellFlash(currentZone) },
           { boxShadow: 'inset 0 0 0 0 rgba(255,255,255,0), 0 0 0 rgba(255,255,255,0)', duration: 0.4, delay: i * 0.04, ease: 'power2.out' },
         )
       })
 
-      // 4b) v5.2 合并位置 tile 浮起（translateY -8 持续 0.35s）
+      // 4b) v6.0 合并位置 tile 浮起（紫青色阴影）
       const mergeSet = new Set(result.events.map(e => e.pos.join(',')))
       Array.from(mergeSet).forEach((posKey, i) => {
         const cell = grid.querySelector(`[data-cell="${posKey}"]`) as HTMLElement | null
         if (!cell) return
-        // 浮起 + 弹回
         gsap.fromTo(
           cell,
-          { y: 0, scale: 1, boxShadow: '0 -8px 0 0 rgba(251,191,36,0.4), 0 0 24px rgba(251,191,36,0.7)' },
+          { y: 0, scale: 1, boxShadow: mergeFloatShadow(currentZone) },
           {
             y: -10,
             scale: 1.12,
@@ -160,7 +156,7 @@ export function MergeGrid() {
         )
       })
 
-      // 4c) v5.2 4+ 连锁 → grid 整体震动 + 5+ 连锁 → 粒子向上汇聚
+      // 4c) v6.0 4+ 连锁 → grid 整体震动 + 5+ 连锁 → 紫青粒子向上汇聚
       const matched = findLongestMatch(result.grid).longest
       if (matched >= 4) {
         gsap.fromTo(
@@ -169,7 +165,7 @@ export function MergeGrid() {
           { x: 0, y: 0, duration: 0.4, ease: 'elastic.out(1, 0.3)' },
         )
         if (matched >= 5) {
-          // 撒 12 个 ⭐ 粒子向上汇聚（多从合并位置生成）
+          // 撒 12 个紫青粒子向上汇聚
           const particleCount = 12
           for (let p = 0; p < particleCount; p++) {
             const ev = result.events[p % Math.max(1, result.events.length)]
@@ -177,9 +173,9 @@ export function MergeGrid() {
             const px = (ev.pos[1] + 0.5) * cellW + 12
             const py = (ev.pos[0] + 0.5) * cellH + 12
             const particle = document.createElement('div')
-            particle.textContent = ['⭐', '✨', '💫', '🌟', '💛'][p % 5]
+            particle.textContent = ['⭐', '✨', '💫', '🌟', '💜'][p % 5]
             particle.className = 'pointer-events-none absolute z-30'
-            particle.style.cssText = `left:${px - 8}px;top:${py - 8}px;font-size:16px;filter:drop-shadow(0 0 6px #fbbf24);`
+            particle.style.cssText = `left:${px - 8}px;top:${py - 8}px;font-size:16px;filter:drop-shadow(0 0 6px ${AURORA.cyan});`
             grid.appendChild(particle)
             const targetX = px + (Math.random() - 0.5) * 80
             const targetY = -30
@@ -268,7 +264,7 @@ export function MergeGrid() {
             const fly = document.createElement('div')
             fly.textContent = flyText
             fly.className = 'pointer-events-none absolute left-1/2 top-1/2 z-30 -translate-x-1/2 -translate-y-1/2 font-mono text-sm font-extrabold'
-            fly.style.color = isCrit ? '#ef4444' : isLucky ? '#a3e635' : '#fde68a'
+            fly.style.color = flyTextColor(isCrit, isLucky)
             fly.style.textShadow = '0 0 6px rgba(0,0,0,0.6), 0 0 12px currentColor'
             cell.appendChild(fly)
             gsap.fromTo(
@@ -287,7 +283,7 @@ export function MergeGrid() {
                 ep.textContent = newEmoji
                 ep.className = 'pointer-events-none absolute left-1/2 top-1/2 z-30 -translate-x-1/2 -translate-y-1/2'
                 ep.style.fontSize = '20px'
-                ep.style.filter = `drop-shadow(0 0 6px ${isCrit ? '#ef4444' : isLucky ? '#a3e635' : '#fbbf24'})`
+                ep.style.filter = `drop-shadow(0 0 6px ${dropShadow(isCrit, isLucky)})`
                 cell.appendChild(ep)
                 const angle = (p - 1) * 0.6 + (Math.random() - 0.5) * 0.4
                 const dist = 36 + Math.random() * 24

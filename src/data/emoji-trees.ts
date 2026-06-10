@@ -307,3 +307,23 @@ export const getLevelLabel = (level: number): string => {
   const awake = level - MAX_LEVEL
   return `醒·${ROMAN[awake] ?? awake}阶`
 }
+
+/**
+ * v6.2 把 getEmoji / getName 提到本文件导出，供 gameStore + MergeGrid 共享
+ * - 接收任意 { zone, level }（不要求完整 Tile）
+ * - Lv 1-11 用 ZONES[zone].tree[level-1].emoji
+ * - Lv 12+ 用 ZONES[zone].awakenedEmoji
+ */
+export const getEmoji = (t: { zone: ZoneId; level: number }): string => {
+  const z = ZONES[t.zone]
+  if (!z) return '·'
+  if (t.level <= MAX_LEVEL) return z.tree[t.level - 1]?.emoji ?? '·'
+  return z.awakenedEmoji
+}
+
+export const getName = (t: { zone: ZoneId; level: number }): string => {
+  const z = ZONES[t.zone]
+  if (!z) return '·'
+  if (t.level <= MAX_LEVEL) return z.tree[t.level - 1]?.name ?? '·'
+  return z.awakenedName
+}

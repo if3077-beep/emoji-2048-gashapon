@@ -3,7 +3,7 @@
  */
 import { create } from 'zustand'
 import type { ZoneId } from '@/data/emoji-trees'
-import { ZONES, MAX_LEVEL, GRID_SIZE, ZONE_LIST } from '@/data/emoji-trees'
+import { ZONES, MAX_LEVEL, GRID_SIZE, ZONE_LIST, getEmoji } from '@/data/emoji-trees'
 import {
   type Grid,
   type Tile,
@@ -442,6 +442,12 @@ export const useGameStore = create<GameState>((set, get) => ({
     // v5.3 streak 满 3 推送 toast + 奖励音效
     if (streakBonus > 0) {
       try { (require('@/store/uiStore') as typeof import('@/store/uiStore')).useUiStore.getState().pushToast(`🔥 ${slideStreak} 连滑 +${streakBonus}🪙`, '🔥', 2) } catch {}
+    }
+
+    // v6.2 稀有时刻：合成 Lv.10+ 触发全屏文字
+    const rare = result.events.find(e => e.level >= 10)
+    if (rare) {
+      try { (require('@/store/uiStore') as typeof import('@/store/uiStore')).useUiStore.getState().triggerRareMoment(getEmoji({ zone: rare.zone, level: rare.level }), rare.level) } catch {}
     }
 
     // v2.0：slide 后自动 spawn 1 个新 tile（修"slide 后不生成胶囊"卡死 bug）
