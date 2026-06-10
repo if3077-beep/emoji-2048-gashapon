@@ -4,6 +4,7 @@
 import { create } from 'zustand'
 import type { CoinBurst } from '@/components/ui/CoinBurst'
 import type { MatchGroup } from '@/lib/auto-merge'
+import type { ZoneId } from '@/data/emoji-trees'
 
 export type TabId = 'home' | 'merge' | 'collection' | 'more'
 
@@ -74,6 +75,12 @@ interface UiState {
   /** v9.2 刷新网格过场计数（UI 监听变化做 flash 0.4s） */
   refreshTick: number
   bumpRefresh: () => void
+  // v11.0 已读 zone（点击过故事页的 zone 集合）
+  readZones: ZoneId[]
+  addReadZone: (z: ZoneId) => void
+  // v11.1 收藏 zone（玩家手动星标）
+  favoriteZones: ZoneId[]
+  toggleFavorite: (z: ZoneId) => void
 }
 
 let _toastId = 0
@@ -171,4 +178,12 @@ export const useUiStore = create<UiState>((set) => ({
   // v9.2 刷新网格过场
   refreshTick: 0,
   bumpRefresh: () => set(s => ({ refreshTick: s.refreshTick + 1 })),
+  // v11.0 已读 zone
+  readZones: [],
+  addReadZone: (z: ZoneId) => set(s => (s.readZones.includes(z) ? {} : { readZones: [...s.readZones, z] })),
+  // v11.1 收藏 zone
+  favoriteZones: [],
+  toggleFavorite: (z: ZoneId) => set(s => ({
+    favoriteZones: s.favoriteZones.includes(z) ? s.favoriteZones.filter(x => x !== z) : [...s.favoriteZones, z],
+  })),
 }))

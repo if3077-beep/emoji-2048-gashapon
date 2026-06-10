@@ -97,3 +97,126 @@ v0.4 留存   ──→  v0.5 成就   ──→  v0.6 社交
 
 **声明**：以上规划根据用户要求"打磨迭代至少三个大版本，做产品经理角度的思考"制定。
 每个版本完成后会更新此文件 + CHANGELOG.md。
+
+---
+
+# v11 迭代规划：百科重做 + 多角色 4 轮
+
+> 用户原话：「百科再优化一下 我告诉你不可用你应该想其他方案 而不是弹窗，再整体迭代优化四轮，要从多个角色审视 新增创意点 然后最后看看有没有bug」
+>
+> 核心问题：v6.1/v8.0 自动调用 Wikipedia/TheMealDB，国内环境超时 4s 后弹"📴 国内环境"toast → 用户体感"做了不靠谱的事还告诉我"
+> 4 轮 = 4 个微版本，每轮选 1-2 个核心改动。
+
+## 多角色审视表
+
+| 角色 | 当前痛点 | v11 创意点 |
+|------|----------|-----------|
+| **PM** | 弹窗让用户感知"产品失败" | v11.0 默认本地；失败转主动 |
+| **PM** | 故事页留白多、信息密度低 | v11.1 故事页结构化（背景/冷知识/合成链/关联 4 段）|
+| **PM** | 看完故事无反馈 | v11.1 首次阅读 +5🪙 |
+| **UI 设计师** | 故事页配色黄 + chip 多 | v11.1 紫青统一 + 取消 chip 洪流 |
+| **UI 设计师** | 12 zone 选择器无状态 | v11.1 主题卡显示"已读/未读" |
+| **游戏策划** | 故事 = 静态背景，缺玩点 | v11.2 随机故事 / 一次连读 / 跨 zone 推荐 |
+| **游戏策划** | 跨区无关联 | v11.2 zone 关联网络（生物↔植物↔元素...）|
+| **前端工程师** | API 失败时主线程 await 4s | v11.0 删自动调用，瞬时返回 |
+| **前端工程师** | 故事页 11 段 lore 重复渲染 | v11.2 一次连读 1.5s 间隔 |
+| **增长 / 留存** | 用户不知道"还能玩什么" | v11.2 故事末尾"→ 推荐下一个 zone" 引导回流 |
+| **增长 / 留存** | 无情感锚点 | v11.1 收藏功能 + 已读徽章 |
+| **运营** | 不同节日无差异化 | v11.2 节日额外 lore（中秋/圣诞/春节 加 1 段）|
+| **QA** | bgm.ts:152 console.warn | v11.3 改 silent |
+| **QA** | 收藏页图片懒加载缺失 | v11.3 lazy + 缓存 |
+
+## v11.0 — 百科去弹窗（核心）
+
+**问题根因**：自动调 Wikipedia/TheMealDB → 4s 超时 → fallback → 弹"📴 国内环境"toast
+
+**方案**：失败转主动
+- 删 `wiki.ts` 的自动 fetchStory 默认行为
+- 改 `getLoreSnippet` 为 `getLocalStory(emoji, zone, level)`：返回本地 4 段（zone.description + zone.flavor + node.lore + 一个"冷知识"pool 随机）
+- 12 zone 各加 3 段"冷知识"（zone-level 趣味知识，存到 emoji-trees 或新文件 `zone-trivia.ts`）
+- CollectionView 主按钮改名："📖 故事" → 直接展示本地（**不调 API**）
+- 末尾加 "🌐 试试在线百科" 次要按钮（小字、低饱和）→ 主动点击才 fetch，失败静默 + 5s 后自动隐藏按钮，**不弹任何 toast**
+- 删 "📴 国内环境" toast
+- 删 "📴 离线" / "📚 本地" / "📚 Local" / "📖 Wikipedia" / "🍽️ TheMealDB" 5 个 chip → 留 1 个 "📖 故事" 来源徽章（默认 "📚 本地故事"）
+- 删 wiki.ts 中 fetchStory 的 Wikipedia/TheMealDB 路径，只留 getLocalStory + 一个可选 `fetchOnline(emoji, name)` 主动调用
+
+**验收**：
+- 点 📖 故事 → 0.1s 内出内容（之前 0-4s 不定）
+- 国内环境无任何 toast / 弹窗
+- 主动点 🌐 试试在线 → 1.5s 后失败时静默，不弹任何东西
+
+## v11.1 — 故事页结构化 + 阅读奖励
+
+**PM/UI/增长** 视角
+
+- 故事卡片 4 段结构：
+  1. **📜 背景**（zone.description 改写）
+  2. **✨ 冷知识**（v11.0 加的 zone-trivia 池随机 1 段）
+  3. **🔗 合成链**（当前 level → 下一级 emoji + name + 4 字提示）
+  4. **🌐 关联 zone**（zone-network 推 2 个关联 zone + 一句话关联理由）
+- 卡片头部：emoji 大字（5xl）+ zone 名 + tier 徽章 + 解锁状态
+- 末尾 "🎁 首次阅读本 zone +5🪙"（localStorage 记录已读 zone 集合）
+- 收藏功能：⭐ 收藏按钮 → localStorage 持久化
+- 主题卡（CollectionView 顶部 12 个 zone 按钮）显示 "📜 已读" 小角标
+- 关弹窗：键盘 ESC 关闭（之前需点关闭按钮）
+
+**验收**：
+- 4 段都有内容（不存在"未提供"）
+- 首次阅读 12 zone 全部读完 +60🪙
+- 已读 zone 主题卡有角标
+
+## v11.2 — 随机故事 + 跨 zone 推荐
+
+**策划/增长** 视角
+
+- 故事页加 3 个新按钮：
+  - **🎲 随机故事** → 跳到任意 zone 任意 level 的故事页
+  - **📖 一次连读本 zone** → 1.5s 间隔滚动展示 11 段 lore，bg 切换
+  - **→ 推荐下一个 zone** → 按 zone-network 推 1 个关联 zone，直接打开
+- zone-network：硬编码关联矩阵（creature↔plant, element↔cosmic, music↔culture, mythology↔dream, food↔ocean, architecture↔retro）
+- 节日 lore：getSeason() 检测中秋/圣诞/春节/情人节 → 追加 1 段"🌕 节日特辑"
+- 主题卡加快捷键：←→ 切换 zone
+
+**验收**：
+- 3 个新按钮都有功能
+- zone 关联路径 12 个全覆盖
+- 节日期间故事页额外 1 段
+
+## v11.3 — bug hunt + 微调
+
+**QA/前端** 视角
+
+- tsc + vitest + build 验证
+- 修 console.warn：
+  - `bgm.ts:152` 改 silent（用 `try { } catch (_) {}`）
+- 检查 favicon.svg / index.html title
+- 故事页图片懒加载（虽然 v11.0 删了图片路径，但要保留 type 字段兼容）
+- 修潜在 UI 边界：
+  - 故事页 max-height 滚动
+  - 主题卡 12 个在小屏（<360px）是否换行
+- 加一项：emoji-trees lore 字段缺失时不再 fallback "成员：xxx"（v11.0 已保证 132 段都有）
+- BUG_AUDIT.md 补 v11 记录
+- VERSION_COMPARISON_V101112.md（继续 v789 之后）
+
+## 文件改动清单
+
+| 文件 | 改动 | 估算 |
+|------|------|------|
+| `src/lib/wiki.ts` | 删自动 fetch，保留主动 fetchOnline + getLocalStory | -50 行 |
+| `src/data/zone-trivia.ts` | 新建：12 zone × 3 段冷知识 = 36 段 | +60 行 |
+| `src/data/zone-network.ts` | 新建：zone 关联矩阵 + 关联理由 | +30 行 |
+| `src/components/collection/CollectionView.tsx` | 故事卡片 4 段 + 已读 + 收藏 + 3 个新按钮 | 重构 200 行 |
+| `src/lib/zone-story.ts` | 新建：getLocalStory(emoji, zone, level, readZones) 整合 | +40 行 |
+| `src/store/uiStore.ts` | 加 readZones Set + favoriteZones Set + addRead/addFavorite | +20 行 |
+| `src/lib/bgm.ts` | console.warn 改 silent | -1 行 |
+| `BUG_AUDIT.md` | v11 4 轮记录 | +30 行 |
+| `PLANNING.md` | 已 append（本文档）| - |
+
+## 质量门槛
+
+- TypeScript 0 错误
+- 37+ 测试通过
+- build 增量 ≤ +10 KB gzip
+- GitHub Pages 自动部署通过
+- 多角色审视：4 轮中每轮至少覆盖 3 个角色视角
+

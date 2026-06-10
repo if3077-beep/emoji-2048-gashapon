@@ -148,8 +148,8 @@ export class BgmPlayer {
       this.startBass()
       this.startChord()
       if (BGMS[this.currentTrack].arp) this.startArp()
-    } catch (e) {
-      console.warn('BGM play failed', e)
+    } catch (_e) {
+      // v11.3 静默吞错：浏览器 autoplay policy / 设备无音频 → 不打扰用户
     }
   }
 
