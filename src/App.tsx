@@ -23,6 +23,8 @@ import { OutfitsPanel } from '@/components/ui/OutfitsPanel'
 import { SettingsPanel } from '@/components/ui/SettingsPanel'
 import { SharePanel } from '@/components/ui/SharePanel'
 import { LeaderboardPanel } from '@/components/ui/LeaderboardPanel'
+import { RandomEventModal } from '@/components/ui/RandomEventModal'
+import { EventBuffBadge } from '@/components/ui/EventBuffBadge'
 
 const TABS = [
   { id: 'home' as const, icon: '🏠', label: '主页' },
@@ -75,11 +77,14 @@ export default function App() {
           <span className="text-lg">🌟</span>
           <div className="flex flex-col leading-tight">
             <span className="text-sm font-bold text-white/90">扭蛋 2048</span>
-            <span className="text-[9px] text-white/30">合成生态 v0.6</span>
+            <span className="text-[9px] text-white/30">合成生态 v0.7</span>
           </div>
         </div>
-        <div className="text-[10px] text-white/30">
-          {tutorialStep <= 4 && `教程 ${tutorialStep}/4`}
+        <div className="flex items-center gap-1.5">
+          <EventBuffBadge />
+          {tutorialStep <= 4 && (
+            <div className="text-[10px] text-white/30">教程 {tutorialStep}/4</div>
+          )}
         </div>
       </header>
 
@@ -125,6 +130,8 @@ export default function App() {
       <SettingsPanel />
       <SharePanel />
       <LeaderboardPanel />
+      <RandomEventModal />
+      <EventBuffBadge />
     </div>
   )
 }

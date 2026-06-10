@@ -20,6 +20,7 @@ import {
   type MoveRecord,
   type MergeEvent,
 } from '@/lib/merge-engine'
+import { autoMerge as autoMergeEngine } from '@/lib/auto-merge'
 import { generatePet, feedPet, petPet, computeForm, type Pet, type PetForm } from '@/lib/pet-gen'
 import { generateDailyTasks, updateTaskProgress, type DailyTask } from '@/lib/task-system'
 import { loadSave, writeSave } from '@/lib/persistence'
@@ -37,6 +38,7 @@ import {
   type Challenge,
 } from '@/lib/checkin'
 import type { OutfitId } from '@/lib/outfits'
+import { rollRandomEvent } from '@/lib/events'
 
 interface GameState {
   // 基础
@@ -86,9 +88,18 @@ interface GameState {
   // 教程
   tutorialStep: number
 
+  // v0.7 随机事件 buff（同时只能有 1 个持续类）
+  activeEventBuff: { id: string; emoji: string; title: string; expiresAt: number; color: string } | null
+  /** 待显示的随机事件（全屏卡片） */
+  pendingRandomEvent: { emoji: string; title: string; desc: string; color: string; durationMs?: number } | null
+  /** 本次扭蛋是否免单（gacha_frenzy 触发后） */
+  freeGachaPending: boolean
+
   // 操作
   pull: (multi?: number) => void
   slide: (dir: 'up' | 'down' | 'left' | 'right') => SlideResult
+  /** v0.7：一键合并（贪心自动滑动直到无事件） */
+  autoMerge: () => { totalEvents: MergeEvent[]; totalMoves: number; rounds: number }
   merge: (from: [number, number], to: [number, number]) => boolean
   setZone: (z: ZoneId) => void
   spendCoins: (n: number) => boolean
@@ -113,6 +124,10 @@ interface GameState {
   detectComeback: () => void
   /** 关页面前调用 */
   beforeUnload: () => void
+  // v0.7 随机事件
+  triggerRandomEvent: () => void
+  dismissRandomEvent: () => void
+  clearEventBuff: () => void
 }
 
 const todayKey = (): string => {
@@ -154,6 +169,9 @@ const init = () => {
         levelByDay: [],
       },
       tutorialStep: saved.tutorialStep ?? 1,
+      activeEventBuff: null,
+      pendingRandomEvent: null,
+      freeGachaPending: false,
     }
   }
   return {
@@ -187,6 +205,9 @@ const init = () => {
       levelByDay: [],
     },
     tutorialStep: 1,
+    activeEventBuff: null,
+    pendingRandomEvent: null,
+    freeGachaPending: false,
   }
 }
 
@@ -252,10 +273,11 @@ export const useGameStore = create<GameState>((set, get) => ({
           if (t.level > zoneMax[t.zone]) zoneMax = { ...zoneMax, [t.zone]: t.level }
           mergeCount++
           // 出蛋：Lv.10
-          if (t.level === 10 && !state.pet && newPetEggStarted === null) {
+          // v0.7 宠物早产：Lv.4 → 蛋；Lv.5 → 孵化（玩家 2 分钟内必拿宠物）
+          if (t.level === 4 && !state.pet && newPetEggStarted === null) {
             newPetEggStarted = Date.now()
           }
-          if (t.level === 11 && !state.pet && newPetEggStarted !== null) {
+          if (t.level === 5 && !state.pet && newPetEggStarted !== null) {
             newlyHatched = generatePet({ triggerLevel: t.level })
           }
           // 投放合并的货币奖励
@@ -323,14 +345,14 @@ export const useGameStore = create<GameState>((set, get) => ({
       ;(evt as any).isLucky = isLucky
     }
 
-    // 宠物触发：Lv.10 → 蛋；Lv.11 → 孵化
+    // 宠物触发：v0.7 改为 Lv.4 → 蛋；Lv.5 → 孵化
     let newPetEggStarted = state.petEggStartedAt
     let newlyHatched: Pet | null = null
     for (const evt of result.events) {
-      if (evt.level === 10 && !state.pet && newPetEggStarted === null) {
+      if (evt.level === 4 && !state.pet && newPetEggStarted === null) {
         newPetEggStarted = Date.now()
       }
-      if (evt.level === 11 && !state.pet && newPetEggStarted !== null) {
+      if (evt.level === 5 && !state.pet && newPetEggStarted !== null) {
         newlyHatched = generatePet({ triggerLevel: evt.level })
         coins += 100
       }
@@ -353,6 +375,11 @@ export const useGameStore = create<GameState>((set, get) => ({
     }
     set(updates)
     get().updateTasks(t => t.desc.includes('合成'), 1)
+
+    // v0.7：合并后尝试触发随机事件
+    if (result.events.length > 0) {
+      get().triggerRandomEvent()
+    }
     return result
   },
 
@@ -390,6 +417,41 @@ export const useGameStore = create<GameState>((set, get) => ({
   },
 
   addCoins: (n) => set(s => ({ coins: s.coins + n })),
+
+  /** v0.7：一键合并（贪心自动滑动直到无事件），返回事件统计 */
+  autoMerge: () => {
+    const state = get()
+    const result = autoMergeEngine(state.grid)
+    if (result.totalEvents.length === 0) {
+      return { totalEvents: [], totalMoves: 0, rounds: 0 }
+    }
+    let { coins, mergeCount, maxLevel, zoneMax, collection, combo, bestCombo } = state
+    combo += result.rounds
+    if (combo > bestCombo) bestCombo = combo
+    mergeCount += result.totalEvents.length
+    const buff = computeBuff(state.currentZone)
+    const isCrit = rollCrit()
+    const isLucky = buff.multiplier > 1
+    for (const evt of result.totalEvents) {
+      if (!collection[evt.zone].includes(evt.level)) {
+        collection = { ...collection, [evt.zone]: [...collection[evt.zone], evt.level].sort((a, b) => a - b) }
+      }
+      if (evt.level > maxLevel) maxLevel = evt.level
+      if (evt.level > zoneMax[evt.zone]) zoneMax = { ...zoneMax, [evt.zone]: evt.level }
+      const reward = computeRewardAmount(evt.kind, combo, state.pet?.affection ?? 0, evt.level)
+      let totalReward = reward
+      if (isCrit) totalReward = totalReward * 5
+      if (isLucky) totalReward = Math.round(totalReward * buff.multiplier)
+      coins += totalReward
+      ;(evt as any).finalReward = totalReward
+      ;(evt as any).isCrit = isCrit
+      ;(evt as any).isLucky = isLucky
+    }
+    set({ grid: result.finalGrid, coins, mergeCount, maxLevel, zoneMax, collection, combo, bestCombo })
+    get().updateTasks(t => t.desc.includes('合成'), result.totalEvents.length)
+    get().triggerRandomEvent()
+    return result
+  },
 
   updateTasks: (predicate, delta = 1) => {
     const { dailyTasks, dailyDateKey } = get()
@@ -531,6 +593,66 @@ export const useGameStore = create<GameState>((set, get) => ({
     })
     get().save()
   },
+
+  // v0.7：随机事件触发
+  triggerRandomEvent: () => {
+    const ev = rollRandomEvent()
+    if (!ev) return
+    // 持续类 buff 写入 activeEventBuff
+    if (ev.durationMs) {
+      set({
+        activeEventBuff: {
+          id: ev.id,
+          emoji: ev.emoji,
+          title: ev.title,
+          expiresAt: Date.now() + ev.durationMs,
+          color: ev.color,
+        },
+      })
+    }
+    // 即时奖励应用
+    const state = get()
+    let coins = state.coins
+    if (ev.id === 'time_rewind') {
+      // 清除 Lv.1-2，每清除一个 +3 币
+      let cleared = 0
+      const newGrid = state.grid.map(row => row.map(t => {
+        if (t && t.level <= 2) { cleared++; return null }
+        return t
+      }))
+      coins += cleared * 3
+      set({ grid: newGrid, coins })
+    } else if (ev.id === 'mystery_visitor') {
+      // 给 1 个随机区域 Lv.5 棋子入网
+      const zoneIds = Object.keys(ZONES) as ZoneId[]
+      const z = zoneIds[Math.floor(Math.random() * zoneIds.length)]!
+      const cap: Tile = { id: nextId('tile'), zone: z, level: 5, bornAt: Date.now() }
+      const result = placeCapsule(state.grid, cap)
+      set({ grid: result.grid })
+    } else if (ev.id === 'gacha_frenzy') {
+      set({ freeGachaPending: true })
+    } else if (ev.id === 'pet_cuddle') {
+      // 下一次喂食翻倍：写入 pendingRewardMultiplier
+      // 简化：直接加好感 +10
+      if (state.pet) {
+        set({ pet: { ...state.pet, affection: Math.min(100, state.pet.affection + 10) } })
+      }
+    } else if (ev.id === 'element_resonance') {
+      // 写入 buff：下一次合并 ×3（由 MergeGrid 在调用 slide 时检测）
+      set({ activeEventBuff: { id: ev.id, emoji: ev.emoji, title: ev.title, expiresAt: Date.now() + 5_000, color: ev.color } })
+    } else if (ev.id === 'combo_storm') {
+      // 已通过 activeEventBuff 实现（30 秒）
+    } else if (ev.id === 'guardian_shield') {
+      // 滑动失败时由 slide 内部检查
+    } else if (ev.id === 'double_hour') {
+      // activeEventBuff 持续
+    }
+    set({ pendingRandomEvent: { emoji: ev.emoji, title: ev.title, desc: ev.desc, color: ev.color, durationMs: ev.durationMs } })
+  },
+
+  dismissRandomEvent: () => set({ pendingRandomEvent: null }),
+
+  clearEventBuff: () => set({ activeEventBuff: null }),
 
   reset: () => {
     set(init())

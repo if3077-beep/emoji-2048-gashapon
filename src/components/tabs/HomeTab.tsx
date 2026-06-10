@@ -3,6 +3,7 @@
  */
 import { Gashapon } from '@/components/gashapon/Gashapon'
 import { MergeGrid } from '@/components/grid/MergeGrid'
+import { AutoMergeButton } from '@/components/ui/AutoMergeButton'
 import { CoinDisplay } from '@/components/ui/CoinDisplay'
 import { useGameStore } from '@/store/gameStore'
 import { useUiStore } from '@/store/uiStore'
@@ -150,6 +151,9 @@ export function HomeTab() {
 
       {/* 网格 */}
       <MergeGrid />
+
+      {/* v0.7 一键合并按钮 */}
+      <AutoMergeButton />
 
       {/* 7 日挑战 */}
       <Challenges challenges={challenges} />
