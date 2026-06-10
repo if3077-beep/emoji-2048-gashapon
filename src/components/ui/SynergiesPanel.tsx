@@ -22,7 +22,10 @@ const formatBuff = (s: Synergy) => {
 
 export function SynergiesPanel() {
   const zoneMax = useGameStore(s => s.zoneMax)
+  const show = useUiStore(s => s.showSynergies)
   const close = useUiStore(s => s.closeSynergies)
+
+  if (!show) return null
 
   return (
     <div
