@@ -1,7 +1,7 @@
 # BUG_AUDIT.md — emoji-2048-gashapon
 
-> 最后自查：2026-06-10（v6 push 后）
-> 15 个 GitHub Pages 版本（v0.4 → v6）已 push，37 测试 0 错误，build 130.24 KB gzip。
+> 最后自查：2026-06-10（v7 push 后）
+> 16 个 GitHub Pages 版本（v0.4 → v7）已 push，37 测试 0 错误，build 131.37 KB gzip。
 
 ## 1. 用户原话反馈 → 修复/打补丁映射
 
@@ -33,6 +33,8 @@
 | "动效这个黄色光晕很丑" | v6.0 | ✅ 已重做 | 新建 `src/lib/effects.ts` 集中所有动效配色：极光紫青（`#a78bfa` + `#67e8f9` + `#f0abfc`）替代 `rgba(251,191,36,...)` 金黄；MergeGrid 起点光球用 radial-gradient（白→青→紫 4 色层 + 紫青双层 box-shadow 28+56px）；流光带 6px 宽紫→青 linear-gradient（带紫青双层 18+36px 光晕）；终点爆裂 60px 青粉径向；移动 cell 闪光 zone-aware 染色；合并浮起 y -10 + 紫青阴影；5+ 连锁 12 颗 ⭐✨💫🌟💜 粒子 drop-shadow 改青；数字飘字颜色全紫（#c4b5fd 替代 #fde68a）；Dpad hint 高亮从金色 `bg-gold-500 ring-gold-300` 改紫青 `text-white ring-violet-400/50` |
 | "图鉴接入免费 API" | v6.1 | ✅ 已接 | 新建 `src/lib/wiki.ts`：1) `WIKI_ZH = zh.wikipedia.org/api/rest_v1/page/summary/` 中文摘要（无 key 免费）2) TheMealDB 菜谱（无 key 免费，限 food/ocean 区）3) 12 zone 关键词 fallback → 4) emoji-trees 风味 local fallback。CollectionView 棋子弹层加"📖 故事 / 🍽️ 看菜谱"按钮（isFood 才显示菜谱），loading spinner + 来源 chip（📖 Wikipedia / 🍽️ TheMealDB / 📚 Local）+ ↗ 打开链接 + 缩略图 |
 | "整体再迭代三次" | v6.2 | ✅ 已迭代 | 第一次 v6.0 配色重设计；第二次 v6.1 接入 API；第三次 v6.2 稀有时刻全屏：合成 Lv.10+ 触发 1.6s 全屏紫青径向背景 + 8xl emoji + "🌟 Lv.X 稀有时刻 🌟" + "达成新等级 · 收藏已解锁" + GSAP back.out 缩放 + CSS letter-spacing 1.5s 动画 |
+| "合成弹出大光晕太丑" | v7.0 | ✅ 已重做 | 新建 `rippleRing()` 函数 + MergeGrid 终点从 60px 紫青径向 burst 改成 **2 圈紫青细环涟漪**（cyan+purple 错开 0.12s，scale 0→3.2→4.4，0.4s 渐隐，1.5px/1px 双层 ring 描边 + 紫青光晕 12px）—— 像石子入水的波纹 |
+| "再看看有什么一起优化和新增 迭代三版本" | v7.0/7.1/7.2 | ✅ 3 版迭代 | **v7.0**：ripple 环 + ComboMeter 默认色 #fbbf24 金→#a78bfa 紫青 + CoinDisplay 数字滚动（ease-out cubic 0.4s RAF 帧插值 + tabular-nums 防抖）+ 删除 endBurst 旧 import；**v7.1**：4+ 连锁 eventStep 80→40ms / 5+ 连锁 28ms（更紧凑爆发感）+ 5+ 连锁 12 颗粒子汇聚触发提前到 4+ + 新增 2 颗同 level 连接线（zone 色细线 0.3s + scaleX 0→1 错位扫描 grid 4 方向，最多画 3 对）；**v7.2**：ZoneGallery 主题切换 0.3s 紫青径向过场（opacity 0→1→0 + power2）+ 滑动瞬间 navigator.vibrate(10) + 主题切换 vibrate(15) + toast 1.8s→2.2s + Toaster top-24→top-12 更显眼 |
 
 ## 2. 审计到的所有 bug 与修复
 

@@ -84,7 +84,7 @@ export const useUiStore = create<UiState>((set) => ({
     set(s => ({ toasts: [...s.toasts, { id, text, emoji, tier }] }))
     setTimeout(() => {
       set(s => ({ toasts: s.toasts.filter(t => t.id !== id) }))
-    }, 1800)
+    }, 2200)  // v7.2 toast 显示时长 1.8s → 2.2s
   },
   bursts: [],
   pushBurst: (b) => {

@@ -16,7 +16,7 @@ import { Dpad } from './Dpad'
 import { detectMatch3, findLongestMatch } from '@/lib/auto-merge'
 import {
   AURORA, TRAIL_GRADIENT, BEAM_HStyle, BEAM_VStyle, zoneColor, zoneGlow,
-  startBallInner, startBallShadow, endBurstInner, endBurstShadow,
+  startBallInner, startBallShadow, rippleRing,
   cellFlash, mergeFloatShadow, flyTextColor, dropShadow,
 } from '@/lib/effects'
 
@@ -57,6 +57,8 @@ export function MergeGrid() {
     resumeAudio()
     setLastDir(dir)  // v1.2 记录最近滑动方向
     setTimeout(() => setLastDir(null), 400)
+    // v7.2 震动反馈：成功滑动瞬间 10ms
+    try { navigator.vibrate?.(10) } catch {}
     const result = slide(dir)
     if (result.moves.length === 0) {
       // 滑动但无变化：断连击
@@ -114,13 +116,23 @@ export function MergeGrid() {
           gsap.fromTo(beam, { y: 0 }, { y: isDown ? rect.height - 86 : -(rect.height - 86), duration: 0.4, ease: 'power2.out' })
           gsap.to(beam, { opacity: 0, duration: 0.2, delay: 0.35, onComplete: () => beam.remove() })
         }
-        // 终点爆裂：紫青径向 burst
-        const burst = document.createElement('div')
-        burst.className = 'pointer-events-none absolute z-30'
-        burst.style.cssText = `left:0;top:0;width:60px;height:60px;transform:translate(${endX - 30}px,${endY - 30}px);background:${endBurstInner};box-shadow:${endBurstShadow};`
-        grid.appendChild(burst)
-        gsap.fromTo(burst, { scale: 0, opacity: 0 }, { scale: 1.6, opacity: 1, duration: 0.18, ease: 'power2.out' })
-        gsap.to(burst, { scale: 2.4, opacity: 0, duration: 0.42, delay: 0.12, ease: 'power2.in', onComplete: () => burst.remove() })
+        // v7.0 涟漪环：2 圈紫青细环从合并 cell 中心向外扩散（替代大光晕）
+        const ringColor = zoneColor(currentZone)
+        const baseSize = Math.max(cellW, cellH) * 0.4
+        for (let i = 0; i < 2; i++) {
+          const ring = document.createElement('div')
+          ring.className = 'pointer-events-none absolute z-30'
+          const size = baseSize
+          const style = rippleRing(i === 0 ? AURORA.cyan : AURORA.purple, i === 0 ? 2 : 1)
+          ring.style.cssText = `left:0;top:0;width:${size}px;height:${size}px;transform:translate(${endX - size / 2}px,${endY - size / 2}px);border:${style.border};background:${style.background};box-shadow:${style.boxShadow};border-radius:50%;`
+          grid.appendChild(ring)
+          gsap.fromTo(
+            ring,
+            { scale: 0, opacity: 0 },
+            { scale: 3.2, opacity: 0.9, duration: 0.18, delay: i * 0.12, ease: 'power2.out' },
+          )
+          gsap.to(ring, { scale: 4.4, opacity: 0, duration: 0.32, delay: 0.18 + i * 0.12, ease: 'power2.in', onComplete: () => ring.remove() })
+        }
       }
 
       // 4) 移动过的 cell 依次闪光（紫青白光）
@@ -165,7 +177,8 @@ export function MergeGrid() {
           { x: -3, y: 2 },
           { x: 0, y: 0, duration: 0.4, ease: 'elastic.out(1, 0.3)' },
         )
-        if (matched >= 5) {
+        if (matched >= 4) {
+          // v7.1 4+ 连锁即可撒 12 颗粒子（之前 5+ 才有）
           // 撒 12 个紫青粒子向上汇聚
           const particleCount = 12
           for (let p = 0; p < particleCount; p++) {
@@ -230,6 +243,10 @@ export function MergeGrid() {
     const moved = new Set(result.moves.map(m => m.tileId))
     setAnimTiles(moved)
     setTimeout(() => setAnimTiles(new Set()), 500)
+
+    // v7.1 4+ 连锁加速：连锁越长，事件间隔越短（更紧凑爆发感）
+    const longest = findLongestMatch(result.grid).longest
+    const eventStep = longest >= 5 ? 28 : longest >= 4 ? 40 : 80
 
     // 触发效果
     result.events.forEach((evt, i) => {
@@ -335,8 +352,58 @@ export function MergeGrid() {
             tier as any,
           )
         }
-      }, i * 80)  // 错开爆发
+      }, i * eventStep)  // v7.1 错开爆发：4+/5+ 连锁 40/28ms
     })
+
+    // v7.1 2 颗同 level 连接线：扫描 grid 找相邻未合并的同 level pair，画 0.3s 细线
+    setTimeout(() => {
+      if (!containerRef.current) return
+      const grid0 = useGameStore.getState().grid
+      const pairs: Array<[[number, number], [number, number]]> = []
+      const seen = new Set<string>()
+      for (let r = 0; r < GRID_SIZE; r++) {
+        for (let c = 0; c < GRID_SIZE; c++) {
+          const t1 = grid0[r]?.[c]
+          if (!t1) continue
+          // 4 方向扫描
+          const dirs: Array<[number, number]> = [[0, 1], [1, 0]]
+          for (const [dr, dc] of dirs) {
+            const nr = r + dr
+            const nc = c + dc
+            if (nr >= GRID_SIZE || nc >= GRID_SIZE) continue
+            const t2 = grid0[nr]?.[nc]
+            if (!t2) continue
+            if (t1.zone !== t2.zone || t1.level !== t2.level) continue
+            // 至少留 1 个空 cell（避免 3 颗中段）— 简单：只看 2 颗不画 3 颗中段
+            // 简化：直接画
+            const key = `${Math.min(r, nr)},${Math.min(c, nc)}|${Math.max(r, nr)},${Math.max(c, nc)}`
+            if (seen.has(key)) continue
+            seen.add(key)
+            pairs.push([[r, c], [nr, nc]])
+          }
+        }
+      }
+      if (pairs.length === 0) return
+      const container = containerRef.current
+      const r0 = container.getBoundingClientRect()
+      const cw = (r0.width - 24) / GRID_SIZE
+      const ch = (r0.height - 24 - 50) / GRID_SIZE
+      const ringColor = zoneColor(currentZone)
+      for (const [a, b] of pairs.slice(0, 3)) {
+        const ax = (a[1] + 0.5) * cw + 12
+        const ay = (a[0] + 0.5) * ch + 12
+        const bx = (b[1] + 0.5) * cw + 12
+        const by = (b[0] + 0.5) * ch + 12
+        const line = document.createElement('div')
+        line.className = 'pointer-events-none absolute z-20'
+        const len = Math.hypot(bx - ax, by - ay)
+        const ang = Math.atan2(by - ay, bx - ax) * 180 / Math.PI
+        line.style.cssText = `left:0;top:0;width:${len}px;height:1.5px;transform:translate(${ax}px,${ay - 0.75}px) rotate(${ang}deg);transform-origin:0 50%;background:linear-gradient(90deg, ${ringColor}00, ${ringColor}ee 30%, ${ringColor}ee 70%, ${ringColor}00);box-shadow:0 0 6px ${ringColor}aa;`
+        container.appendChild(line)
+        gsap.fromTo(line, { opacity: 0, scaleX: 0 }, { opacity: 1, scaleX: 1, duration: 0.15, ease: 'power2.out' })
+        gsap.to(line, { opacity: 0, scaleX: 0, duration: 0.3, delay: 0.3, ease: 'power2.in', onComplete: () => line.remove() })
+      }
+    }, 220)
   }, [slide, combo, grid, pushToast, pushBurst, burstConfetti])
 
   // 触屏滑动

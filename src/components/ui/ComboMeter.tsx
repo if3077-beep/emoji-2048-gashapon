@@ -1,5 +1,6 @@
 /**
  * 连击光带：屏幕边缘发光强度跟 combo 数走
+ * v7.0 紫青配色替代金色默认
  */
 import { useEffect, useState } from 'react'
 
@@ -8,7 +9,7 @@ interface Props {
   color?: string
 }
 
-export function ComboMeter({ combo, color = '#fbbf24' }: Props) {
+export function ComboMeter({ combo, color = '#a78bfa' }: Props) {
   const [shake, setShake] = useState(false)
 
   useEffect(() => {

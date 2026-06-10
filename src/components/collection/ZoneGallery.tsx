@@ -45,8 +45,24 @@ export function ZoneGallery() {
   if (!show) return null
 
   const onPick = (zid: typeof currentZone) => {
-    setZone(zid)
-    setGuide(`已切换到 ${ZONE_LIST.find(z => z.id === zid)?.name ?? ''}`)
+    // v7.2 主题切换过场：先径向覆盖 0.3s，再切 zone
+    const z = ZONE_LIST.find(zz => zz.id === zid)
+    if (z) {
+      const overlay = document.createElement('div')
+      overlay.className = 'pointer-events-none fixed inset-0 z-[60]'
+      overlay.style.cssText = `background:radial-gradient(circle, ${z.color}aa 0%, ${z.color}55 40%, transparent 80%);opacity:0;`
+      document.body.appendChild(overlay)
+      gsap.to(overlay, { opacity: 1, duration: 0.15, ease: 'power2.out', onComplete: () => {
+        setZone(zid)
+        setGuide(`已切换到 ${z.name}`)
+        gsap.to(overlay, { opacity: 0, duration: 0.18, delay: 0.05, ease: 'power2.in', onComplete: () => overlay.remove() })
+        // v7.2 震动反馈
+        try { navigator.vibrate?.(15) } catch {}
+      } })
+    } else {
+      setZone(zid)
+      setGuide('已切换主题')
+    }
     close()
   }
 

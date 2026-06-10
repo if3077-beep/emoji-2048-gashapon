@@ -77,3 +77,15 @@ export const mergeFloatShadow = (zone?: ZoneId) => {
   const c = zone ? zoneColor(zone) : AURORA.cyan
   return `0 -8px 0 0 ${c}55, 0 0 22px ${c}cc`
 }
+
+/**
+ * v7.0 涟漪环样式（替代大光晕）
+ * - 1px 细环，紫青色
+ * - 透明中心，向外扩散时 ring 加粗
+ */
+export const rippleRing = (color: string = AURORA.cyan, thickness: number = 2) => ({
+  border: `${thickness}px solid ${color}`,
+  background: 'transparent',
+  boxShadow: `0 0 12px ${color}aa, inset 0 0 8px ${color}55`,
+  borderRadius: '50%',
+})

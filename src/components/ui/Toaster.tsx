@@ -1,12 +1,12 @@
 /**
- * 飘字提示
+ * 飘字提示（v7.2：位置 top-24 → top-12 更显眼）
  */
 import { useUiStore } from '@/store/uiStore'
 
 export function Toaster() {
   const toasts = useUiStore(s => s.toasts)
   return (
-    <div className="pointer-events-none fixed inset-x-0 top-24 z-50 flex flex-col items-center gap-2">
+    <div className="pointer-events-none fixed inset-x-0 top-12 z-50 flex flex-col items-center gap-2">
       {toasts.map(t => (
         <div
           key={t.id}
