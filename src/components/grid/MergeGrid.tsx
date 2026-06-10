@@ -124,7 +124,8 @@ export function MergeGrid() {
             y: screen.y,
           })
           sfx.merge(evt.level)
-          if (evt.level >= 5) sfx.rare()
+          if (isCrit) sfx.crit()
+          else if (evt.level >= 5) sfx.rare()
           if (evt.level === 11) sfx.celebrate()
           if (evt.level > 11) sfx.celebrate()
         }

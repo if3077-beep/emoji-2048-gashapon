@@ -322,6 +322,10 @@ export const useGameStore = create<GameState>((set, get) => ({
     set(updates)
     get().updateTasks(t => t.desc.includes('扭蛋'), 1)
     if (maxLevel >= 5) get().updateTasks(t => t.desc.includes('Lv.5'), 1)
+    // v1.3 宠物孵化音效
+    if (newlyHatched) {
+      try { (require('@/lib/audio') as typeof import('@/lib/audio')).sfx.petBorn() } catch {}
+    }
     // v1.1 检测成就
     get()._checkAchievements()
   },
@@ -433,6 +437,8 @@ export const useGameStore = create<GameState>((set, get) => ({
     if (z === state.currentZone) return
     set({ currentZone: z })
     get().updateTasks(t => t.desc.includes('生态区'), 1)
+    // v1.3 主题切换音效
+    try { (require('@/lib/audio') as typeof import('@/lib/audio')).sfx.whoosh() } catch {}
   },
 
   spendCoins: (n) => {

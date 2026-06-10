@@ -9,6 +9,7 @@ import gsap from 'gsap'
 import { useGameStore } from '@/store/gameStore'
 import { useUiStore } from '@/store/uiStore'
 import { CATEGORY_LABELS } from '@/lib/achievements'
+import { sfx } from '@/lib/audio'
 
 export function AchievementUnlockModal() {
   const current = useGameStore(s => s.currentAchievement)

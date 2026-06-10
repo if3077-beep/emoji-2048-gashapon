@@ -143,4 +143,41 @@ export const sfx = {
       { freq: 784, dur: 0.3, type: 'triangle', volume: 0.07, delay: 0.2 },
       { freq: 1047, dur: 0.4, type: 'triangle', volume: 0.07, delay: 0.3 },
     ]),
+  /** v1.3 成就解锁（上升琶音 + 鼓点） */
+  achievement: () =>
+    play([
+      { freq: 523, dur: 0.12, type: 'triangle', volume: 0.08 },
+      { freq: 659, dur: 0.12, type: 'triangle', volume: 0.08, delay: 0.1 },
+      { freq: 784, dur: 0.12, type: 'triangle', volume: 0.08, delay: 0.2 },
+      { freq: 1047, dur: 0.4, type: 'triangle', volume: 0.09, delay: 0.3 },
+      { freq: 1319, dur: 0.5, type: 'sine', volume: 0.06, delay: 0.4 },
+    ]),
+  /** v1.3 宠物孵化（柔软琶音） */
+  petBorn: () =>
+    play([
+      { freq: 392, dur: 0.18, type: 'sine', volume: 0.06 },
+      { freq: 494, dur: 0.18, type: 'sine', volume: 0.06, delay: 0.15 },
+      { freq: 587, dur: 0.3, type: 'triangle', volume: 0.07, delay: 0.3 },
+      { freq: 784, dur: 0.4, type: 'triangle', volume: 0.08, delay: 0.45 },
+    ]),
+  /** v1.3 宠物摸头（轻快双音） */
+  petPet: () =>
+    play([
+      { freq: 880, dur: 0.08, type: 'sine', volume: 0.05 },
+      { freq: 1100, dur: 0.08, type: 'sine', volume: 0.04, delay: 0.07 },
+    ]),
+  /** v1.3 暴击（三连鼓 + 滑音） */
+  crit: () =>
+    play([
+      { freq: 1200, dur: 0.04, type: 'square', volume: 0.08 },
+      { freq: 1200, dur: 0.04, type: 'square', volume: 0.08, delay: 0.06 },
+      { freq: 1200, dur: 0.04, type: 'square', volume: 0.08, delay: 0.12 },
+      { freq: 800, freqEnd: 1600, dur: 0.18, type: 'sawtooth', volume: 0.06, delay: 0.18 },
+    ]),
+  /** v1.3 主题切换（柔和滑音） */
+  whoosh: () =>
+    play([
+      { freq: 200, freqEnd: 800, dur: 0.18, type: 'sine', volume: 0.05 },
+      { freq: 800, freqEnd: 400, dur: 0.14, type: 'sine', volume: 0.04, delay: 0.16 },
+    ]),
 }
