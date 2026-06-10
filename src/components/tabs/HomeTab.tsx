@@ -1,6 +1,7 @@
 /**
  * 主页 Tab（v0.3：季节buff + 主线任务条 + v0.4 签到/挑战/统计入口 + v0.6 周末双倍）
  */
+import { useState } from 'react'
 import { Gashapon } from '@/components/gashapon/Gashapon'
 import { MergeGrid } from '@/components/grid/MergeGrid'
 import { AutoMergeButton } from '@/components/ui/AutoMergeButton'
@@ -52,9 +53,8 @@ export function HomeTab() {
 
   return (
     <div className="flex w-full flex-col items-center gap-1.5 px-3 py-1.5">
-      {/* v6.3 主页紧凑化：gap-2.5 → gap-1.5（-40%），py-2 → py-1.5 */}
-      {/* v5.0 整合：主页 = 货币条 + 季节buff + 卦象 + 主题 + 扭蛋机 + 网格 + 任务 */}
-      {/* 货币 + 最高 + Combo + v0.4 入口 */}
+      {/* v8.1 主页顶部 emoji 堆叠彻底解决：3 行 → 3 行但更紧凑 */}
+      {/* 货币条 v8.1：4 chip 极简 [🪙 N] [🎁 7] [📊] [👑 Lv.X]，combo 移到顶栏右侧外 */}
       <div className="flex w-full max-w-[400px] items-center gap-1">
         <div className="glass flex flex-1 items-center gap-1 rounded-full px-2 py-1">
           <span className="text-sm">🪙</span>
@@ -79,48 +79,20 @@ export function HomeTab() {
         <button
           onClick={openStats}
           className="glass flex items-center gap-0.5 rounded-full px-1.5 py-1 active:scale-95"
+          title="统计"
         >
           <span className="text-xs">📊</span>
         </button>
-        <div className="glass flex items-center gap-0.5 rounded-full px-1.5 py-1">
-          <span className="text-[8px] text-white/40">最高</span>
-          <span className="font-mono text-[10px] font-bold text-ember-400">Lv.{maxLevel}</span>
+        <div className="glass flex items-center gap-0.5 rounded-full px-1.5 py-1" title="最高等级">
+          <span className="text-[9px] text-white/40">👑</span>
+          <span className="font-mono text-[9px] font-bold text-ember-400">Lv.{maxLevel}</span>
         </div>
-        {combo > 1 && (
-          <div className="glass flex items-center gap-0.5 rounded-full px-1.5 py-1">
-            <span className="text-[9px] text-gold-400">×{combo}</span>
-          </div>
-        )}
       </div>
 
-      {/* v0.3 季节 buff 条（v1.2 拆 chip + 防 emoji 堆叠，v6.3 紧凑化） */}
-      <div
-        className="flex w-full max-w-[400px] flex-wrap items-center gap-1 rounded-2xl px-2 py-1 text-[9px]"
-        style={{
-          background: 'linear-gradient(90deg, rgba(167,139,250,0.10), rgba(96,165,250,0.10))',  // v6.3 紫青替代金色
-          border: '1px solid rgba(167,139,250,0.18)',
-        }}
-      >
-        <span className="rounded-full bg-white/[0.06] px-1 py-0 text-[10px]">{seasonEmoji(buff.season)}</span>
-        <span className="text-white/70">今日 <span className="text-violet-300 font-bold">{seasonLabel(buff.season)}季</span></span>
-        <span className="rounded-full bg-emerald-500/15 px-1 py-0 text-emerald-300">
-          🍀 {buff.luckyZoneName}
-        </span>
-        {weekend && (
-          <span className="rounded-full bg-rose-500/20 px-1 py-0 text-rose-300 font-bold animate-pulse">
-            🎉 周末双倍
-          </span>
-        )}
-        {buff.multiplier > 1 ? (
-          <span className="rounded-full bg-violet-500/30 px-1 py-0 font-mono font-bold text-violet-300">
-            ×{buff.multiplier}
-          </span>
-        ) : (
-          <span className="rounded-full bg-white/[0.04] px-1 py-0 text-white/40">5% 暴击</span>
-        )}
-      </div>
+      {/* v8.1 季节buff：1 行 1 chip "详情 ⌄" 可展开（默认收起，避免 emoji 堆叠） */}
+      <BuffStrip buff={buff} weekend={weekend} />
 
-      {/* v3.2 创意：今日宜合 + 抽卡徽章进度 */}
+      {/* v3.2 创意：今日宜合 + 抽卡徽章进度（v8.1 紧凑化） */}
       <DailyFortune totalPulls={totalPulls} currentZone={currentZone} />
 
       {/* 当前主题卡片 + 切换入口（v6.3 紧凑化） */}
@@ -436,7 +408,7 @@ function DailyFortune({ totalPulls, currentZone }: { totalPulls: number; current
 
   return (
     <div
-      className="flex w-full max-w-[400px] flex-col gap-1.5 rounded-2xl px-2.5 py-2 text-[10px]"
+      className="flex w-full max-w-[400px] flex-col gap-1 rounded-2xl px-2 py-1.5 text-[10px]"
       style={{
         background: 'linear-gradient(90deg, rgba(167,139,250,0.12), rgba(96,165,250,0.12))',
         border: '1px solid rgba(167,139,250,0.25)',
@@ -444,7 +416,7 @@ function DailyFortune({ totalPulls, currentZone }: { totalPulls: number; current
     >
       <div className="flex items-center gap-1.5">
         <span className="text-[11px]">🔮</span>
-        <span className="text-white/60">今日宜合</span>
+        <span className="text-white/60">宜合</span>
         <span
           className="rounded-full px-1.5 py-0.5 font-bold"
           style={{ background: `${fortuneZ.color}30`, color: fortuneZ.color }}
@@ -466,44 +438,80 @@ function DailyFortune({ totalPulls, currentZone }: { totalPulls: number; current
           </button>
         )}
       </div>
-      {/* 抽卡徽章进度 */}
-      <div className="flex items-center gap-1">
-        {PULL_MILESTONES.map((m, i) => {
-          const reached = totalPulls >= m.count
-          return (
-            <div key={m.count} className="flex items-center gap-0.5">
-              <span
-                className={`flex h-5 w-5 items-center justify-center rounded-full text-[11px] ring-1 ${reached ? '' : 'grayscale opacity-40'}`}
-                style={{
-                  background: reached ? `${m.color}33` : 'rgba(255,255,255,0.05)',
-                  borderColor: reached ? m.color : 'rgba(255,255,255,0.1)',
-                  boxShadow: reached ? `0 0 8px ${m.color}88` : 'none',
-                }}
-                title={`${m.label} · ${m.count} 抽`}
-              >
-                {m.emoji}
-              </span>
-              {i < PULL_MILESTONES.length - 1 && <span className="text-[8px] text-white/20">·</span>}
-            </div>
-          )
-        })}
+      {/* v8.1 抽卡徽章进度：1 进度条 + 1 emoji 数字（替代 6 圆 + 数字拥堵） */}
+      <div className="flex items-center gap-1.5">
+        <span className="text-[9px] text-white/40">下一徽章</span>
         {nextMilestone ? (
-          <span className="ml-auto text-[9px] text-white/40">
-            {totalPulls}/{nextMilestone.count} 抽 → {nextMilestone.emoji} {nextMilestone.label}
-          </span>
+          <>
+            <span className="text-[12px]">{nextMilestone.emoji}</span>
+            <span className="text-[9px] text-white/50">{nextMilestone.label}</span>
+            <div className="ml-auto flex flex-1 items-center gap-1">
+              <div className="h-1 flex-1 overflow-hidden rounded-full bg-white/5">
+                <div
+                  className="h-full transition-all"
+                  style={{
+                    width: `${progressPct}%`,
+                    background: `linear-gradient(90deg, ${nextMilestone.color}, #fff)`,
+                  }}
+                />
+              </div>
+              <span className="font-mono text-[9px] text-white/50">{totalPulls}/{nextMilestone.count}</span>
+            </div>
+          </>
         ) : (
-          <span className="ml-auto text-[9px] text-pink-300 font-bold">👑 全部达成！</span>
+          <span className="ml-auto text-[9px] font-bold text-pink-300">👑 全部达成！</span>
         )}
       </div>
-      {nextMilestone && (
-        <div className="h-1 overflow-hidden rounded-full bg-white/5">
-          <div
-            className="h-full transition-all"
-            style={{
-              width: `${progressPct}%`,
-              background: `linear-gradient(90deg, ${nextMilestone.color}, #fff)`,
-            }}
-          />
+    </div>
+  )
+}
+
+/**
+ * v8.1 季节 buff 条：1 行 1 chip 默认收起，点 ⌄ 展开 5 chip（避免 emoji 堆叠）
+ */
+function BuffStrip({ buff, weekend }: { buff: any; weekend: boolean }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <div
+      className="flex w-full max-w-[400px] flex-col gap-1 rounded-2xl px-2 py-1 text-[9px]"
+      style={{
+        background: 'linear-gradient(90deg, rgba(167,139,250,0.10), rgba(96,165,250,0.10))',
+        border: '1px solid rgba(167,139,250,0.18)',
+      }}
+    >
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="flex w-full items-center gap-1.5"
+      >
+        <span className="rounded-full bg-white/[0.06] px-1 text-[10px]">{seasonEmoji(buff.season)}</span>
+        <span className="text-white/70">
+          <span className="text-violet-300 font-bold">{seasonLabel(buff.season)}季</span>
+        </span>
+        <span className="rounded-full bg-emerald-500/15 px-1 text-emerald-300">
+          🍀 {buff.luckyZoneName}
+        </span>
+        {weekend && (
+          <span className="rounded-full bg-rose-500/20 px-1 text-rose-300 font-bold animate-pulse">
+            🎉 双倍
+          </span>
+        )}
+        {buff.multiplier > 1 ? (
+          <span className="rounded-full bg-violet-500/30 px-1 font-mono font-bold text-violet-300">
+            ×{buff.multiplier}
+          </span>
+        ) : (
+          <span className="rounded-full bg-white/[0.04] px-1 text-white/40">5%暴击</span>
+        )}
+        <span className={`ml-auto text-white/30 transition-transform ${open ? 'rotate-180' : ''}`}>⌄</span>
+      </button>
+      {open && (
+        <div className="flex flex-wrap items-center gap-1.5 text-[9px] text-white/60 pt-0.5">
+          <span>🌸 春</span><span>·</span>
+          <span>☀️ 夏</span><span>·</span>
+          <span>🍂 秋</span><span>·</span>
+          <span>❄️ 冬</span><span>·</span>
+          <span className="rounded-full bg-white/[0.04] px-1 text-white/40">暴击 5%</span>
+          <span className="rounded-full bg-white/[0.04] px-1 text-white/40">周末双倍</span>
         </div>
       )}
     </div>

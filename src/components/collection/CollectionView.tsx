@@ -130,16 +130,30 @@ function NodePreview({ node, zone, onClose }: { node: any; zone: Zone; onClose: 
   // v6.1 异步故事/菜谱
   const [story, setStory] = useState<StoryResult | null>(null)
   const [loading, setLoading] = useState(false)
+  // v8.0 离线提示
+  const [offlineToast, setOfflineToast] = useState(false)
   const loadStory = async () => {
     if (story || loading) return
     setLoading(true)
-    const r = await fetchStory(node.emoji, zone.id, node.name)
+    const r = await fetchStory(node.emoji, zone.id, node.name, node.level)
     setStory(r)
     setLoading(false)
+    if (r.offline) {
+      setOfflineToast(true)
+      setTimeout(() => setOfflineToast(false), 1500)
+    }
   }
 
   return (
     <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={onClose}>
+      {/* v8.0 离线 toast 浮层 */}
+      {offlineToast && (
+        <div className="pointer-events-none fixed left-1/2 top-12 z-50 -translate-x-1/2 animate-pop">
+          <div className="rounded-full bg-amber-500/30 px-3 py-1 text-[11px] font-bold text-amber-200 backdrop-blur-sm" style={{ border: '1px solid rgba(245,158,11,0.5)' }}>
+            📴 国内环境，API 暂不可用，已用本地故事
+          </div>
+        </div>
+      )}
       <div
         className="flex w-[88vw] max-w-md flex-col gap-3 rounded-3xl p-5"
         style={{
@@ -199,8 +213,13 @@ function NodePreview({ node, zone, onClose }: { node: any; zone: Zone; onClose: 
             <div className="space-y-1.5">
               <div className="flex items-center gap-1.5 text-[9px] text-white/40">
                 <span className="rounded-full bg-violet-500/20 px-1.5 py-0.5 font-bold text-violet-200">
-                  {story.source === 'wiki' ? '📖 Wikipedia' : story.source === 'meal' ? '🍽️ TheMealDB' : '📚 Local'}
+                  {story.source === 'wiki' ? '📖 Wikipedia' : story.source === 'meal' ? '🍽️ TheMealDB' : story.offline ? '📚 本地' : '📚 Local'}
                 </span>
+                {story.offline && (
+                  <span className="rounded-full bg-amber-500/20 px-1.5 py-0.5 font-bold text-amber-200">
+                    📴 离线
+                  </span>
+                )}
                 {story.url && (
                   <a
                     href={story.url}

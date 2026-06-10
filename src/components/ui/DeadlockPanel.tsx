@@ -36,6 +36,7 @@ export function DeadlockPanel() {
         background: 'linear-gradient(165deg, rgba(220, 38, 38, 0.15) 0%, rgba(251, 191, 36, 0.12) 100%)',
         border: '1px solid rgba(220, 38, 38, 0.45)',
         boxShadow: '0 0 20px rgba(220, 38, 38, 0.25)',
+        animation: 'deadlockPulse 0.6s ease-in-out infinite',  // v8.2 紫红闪烁
       }}
     >
       <div className="flex items-center gap-2.5">
@@ -70,6 +71,12 @@ export function DeadlockPanel() {
           再撑一下
         </button>
       </div>
+      <style>{`
+        @keyframes deadlockPulse {
+          0%, 100% { box-shadow: 0 0 20px rgba(220, 38, 38, 0.25); }
+          50%      { box-shadow: 0 0 32px rgba(220, 38, 38, 0.6), 0 0 12px rgba(220, 38, 38, 0.4); }
+        }
+      `}</style>
     </div>
   )
 }

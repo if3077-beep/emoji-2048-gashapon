@@ -1,13 +1,17 @@
 /**
  * v6.1 图鉴故事 + 菜谱 异步获取
+ * v8.0 加 4s 超时 + AbortController，国内环境维基被墙时快速回退
  * - Wikipedia 中文摘要（无 key，免费）
  * - TheMealDB 菜谱（无 key，免费，限食物类）
- * - 内置 fallback：API 失败时回退到 emoji-trees 风味描述
+ * - 内置 fallback：API 失败时回退到 emoji-trees 风味描述（lore + zone.flavor）
  */
 import { ZONES, type ZoneId } from '@/data/emoji-trees'
 
 const WIKI_ZH = 'https://zh.wikipedia.org/api/rest_v1/page/summary/'
 const MEALDB = 'https://www.themealdb.com/api/json/v1/1/search.php'
+
+/** v8.0 国内环境：4s 超时 */
+const API_TIMEOUT_MS = 4000
 
 export interface StoryResult {
   title: string
@@ -18,6 +22,8 @@ export interface StoryResult {
   url?: string
   /** 加载来源 wiki/meal/local */
   source: 'wiki' | 'meal' | 'local'
+  /** v8.0 是否因超时/失败而离线回退 */
+  offline?: boolean
 }
 
 /** zone 类型 → 候选 wiki 词条关键词（中文） */
@@ -42,9 +48,35 @@ const FOOD_ZONES = new Set<ZoneId>(['food', 'ocean'])
 /** emoji → 简单映射（脱掉变体符号） */
 const normalize = (s: string) => s.replace(/[\u{1F3FB}-\u{1F3FF}]/gu, '').trim()
 
-/** v6.1 取 emoji 的故事（异步） */
-export async function fetchStory(emoji: string, zone: ZoneId, fallbackName: string): Promise<StoryResult> {
+/** v8.0 带超时的 fetch */
+async function fetchWithTimeout(url: string, opts: RequestInit = {}, timeoutMs = API_TIMEOUT_MS) {
+  const ctrl = new AbortController()
+  const timer = setTimeout(() => ctrl.abort(), timeoutMs)
+  try {
+    const res = await fetch(url, { ...opts, signal: ctrl.signal })
+    return res
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
+/**
+ * v8.0 找 emoji 节点拿 lore（本地故事库）
+ * 顺序：tree[level-1].lore → zone.description
+ */
+function getLoreSnippet(emoji: string, zone: ZoneId, level: number, fallbackName: string): string {
+  const z = ZONES[zone]
+  if (!z) return fallbackName
+  const node = level >= 1 && level <= 11 ? z.tree[level - 1] : null
+  if (node?.lore) return `${node.lore}（${z.flavor}）`
+  return `${z.description} · 成员：${fallbackName}`
+}
+
+/** v6.1 取 emoji 的故事（异步），v8.0 加超时 + local 兜底 */
+export async function fetchStory(emoji: string, zone: ZoneId, fallbackName: string, level: number = 1): Promise<StoryResult> {
   const name = normalize(fallbackName)
+  const loreSnippet = getLoreSnippet(emoji, zone, level, fallbackName)
+
   // 1) 先尝试 TheMealDB（食物）
   if (FOOD_ZONES.has(zone) && name) {
     const meal = await fetchMeal(name).catch(() => null)
@@ -61,13 +93,20 @@ export async function fetchStory(emoji: string, zone: ZoneId, fallbackName: stri
     const w = await fetchWiki(kw).catch(() => null)
     if (w) return w
   }
-  return { title: fallbackName, extract: `${fallbackName} · ${ZONES[zone].name} 系列的成员。`, source: 'local' }
+  // 4) v8.0 离线回退：返回 lore 字段作为 snippet
+  return { title: fallbackName, extract: loreSnippet, source: 'local', offline: true }
 }
 
-/** Wikipedia 中文摘要 */
+/** 找 level（外部传入或推算） */
+function level(_emoji: string, _zone: ZoneId, fallbackName: string): number {
+  // 外部不传 level，简单用 1 兜底
+  return 1
+}
+
+/** Wikipedia 中文摘要（v8.0 4s 超时） */
 async function fetchWiki(title: string): Promise<StoryResult | null> {
   const url = `${WIKI_ZH}${encodeURIComponent(title)}`
-  const res = await fetch(url, { headers: { Accept: 'application/json' } })
+  const res = await fetchWithTimeout(url, { headers: { Accept: 'application/json' } })
   if (!res.ok) return null
   const data = await res.json()
   if (!data?.extract) return null
@@ -80,10 +119,10 @@ async function fetchWiki(title: string): Promise<StoryResult | null> {
   }
 }
 
-/** TheMealDB 搜索（只匹配第一道菜的摘要） */
+/** TheMealDB 搜索（v8.0 4s 超时） */
 async function fetchMeal(name: string): Promise<StoryResult | null> {
   const url = `${MEALDB}?s=${encodeURIComponent(name)}`
-  const res = await fetch(url)
+  const res = await fetchWithTimeout(url)
   if (!res.ok) return null
   const data = await res.json()
   const m = data?.meals?.[0]

@@ -1,7 +1,7 @@
 # BUG_AUDIT.md — emoji-2048-gashapon
 
-> 最后自查：2026-06-10（v7 push 后）
-> 16 个 GitHub Pages 版本（v0.4 → v7）已 push，37 测试 0 错误，build 131.37 KB gzip。
+> 最后自查：2026-06-10（v8 push 后）
+> 17 个 GitHub Pages 版本（v0.4 → v8）已 push，37 测试 0 错误，build 131.89 KB gzip。
 
 ## 1. 用户原话反馈 → 修复/打补丁映射
 
@@ -35,6 +35,9 @@
 | "整体再迭代三次" | v6.2 | ✅ 已迭代 | 第一次 v6.0 配色重设计；第二次 v6.1 接入 API；第三次 v6.2 稀有时刻全屏：合成 Lv.10+ 触发 1.6s 全屏紫青径向背景 + 8xl emoji + "🌟 Lv.X 稀有时刻 🌟" + "达成新等级 · 收藏已解锁" + GSAP back.out 缩放 + CSS letter-spacing 1.5s 动画 |
 | "合成弹出大光晕太丑" | v7.0 | ✅ 已重做 | 新建 `rippleRing()` 函数 + MergeGrid 终点从 60px 紫青径向 burst 改成 **2 圈紫青细环涟漪**（cyan+purple 错开 0.12s，scale 0→3.2→4.4，0.4s 渐隐，1.5px/1px 双层 ring 描边 + 紫青光晕 12px）—— 像石子入水的波纹 |
 | "再看看有什么一起优化和新增 迭代三版本" | v7.0/7.1/7.2 | ✅ 3 版迭代 | **v7.0**：ripple 环 + ComboMeter 默认色 #fbbf24 金→#a78bfa 紫青 + CoinDisplay 数字滚动（ease-out cubic 0.4s RAF 帧插值 + tabular-nums 防抖）+ 删除 endBurst 旧 import；**v7.1**：4+ 连锁 eventStep 80→40ms / 5+ 连锁 28ms（更紧凑爆发感）+ 5+ 连锁 12 颗粒子汇聚触发提前到 4+ + 新增 2 颗同 level 连接线（zone 色细线 0.3s + scaleX 0→1 错位扫描 grid 4 方向，最多画 3 对）；**v7.2**：ZoneGallery 主题切换 0.3s 紫青径向过场（opacity 0→1→0 + power2）+ 滑动瞬间 navigator.vibrate(10) + 主题切换 vibrate(15) + toast 1.8s→2.2s + Toaster top-24→top-12 更显眼 |
+| "图鉴百科接口加载不出来"（国内） | v8.0 | ✅ 已修 | `wiki.ts` 新增 `fetchWithTimeout`（AbortController + 4s 超时）+ `StoryResult.offline` 标识 + 本地 `getLoreSnippet` 兜底（node.lore + zone.flavor）+ CollectionView 加 📴 离线 toast 浮层（"国内环境，API 暂不可用，已用本地故事"，1.5s）+ 来源 chip 显示"📚 本地"+"📴 离线" |
+| "最上方 emoji 堆叠没解决" | v8.1 | ✅ 已重做 | **货币条**：1 行 4 chip 极简 [🪙 数字] [🎁 7] [📊] [👑 Lv.X]（去掉"最高"和"×combo"2 chip）；**BuffStrip 新组件**：季节buff 5 chip 改 1 行 1 chip + ⌄ 展开按钮（默认收起避免拥堵）；**DailyFortune**：6 圆徽章+·+数字 拥堵 → 改 1 进度条 + 1 emoji 数字（"下一徽章 🎁 label [进度] N/M"）|
+| "2048 死局可能依然在" | v8.2 | ✅ 已加自动救济 | gameStore 新增 `autoRelief()`：满格 + spawn 失败时主动清 1 颗 Lv.1-2 随机（保留 Lv.3+）+ 再 spawn 1 次 + pushToast "🪦 满格自动清理 1 颗低等级"；**DeadlockPanel**：紫红 box-shadow 0.6s 闪烁动画 `deadlockPulse`（rgba(220,38,38,0.25)↔0.6）|
 
 ## 2. 审计到的所有 bug 与修复
 

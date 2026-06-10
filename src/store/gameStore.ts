@@ -155,6 +155,8 @@ interface GameState {
   // v2.0 死局与 spawn
   /** v2.0：尝试在网格中放一个新 tile（如果有空位） */
   trySpawnOne: () => boolean
+  /** v8.2 满格自动救济：主动清 1 颗 Lv.1-2 喘息（返回清除数量 0/1） */
+  autoRelief: () => number
   /** v2.0：死局检测（满格 + 无任何合成） */
   checkDeadlock: () => boolean
   /** v2.0：死局兜底（清 Lv.1-3，保留 Lv.4+，奖 50 🪙） */
@@ -451,7 +453,15 @@ export const useGameStore = create<GameState>((set, get) => ({
     }
 
     // v2.0：slide 后自动 spawn 1 个新 tile（修"slide 后不生成胶囊"卡死 bug）
-    get().trySpawnOne()
+    const spawnOk = get().trySpawnOne()
+    // v8.2 死局自动救济：spawn 失败（满格）→ 主动清 1 颗 Lv.1-2 喘息
+    if (!spawnOk) {
+      const cleared = get().autoRelief()
+      if (cleared > 0) {
+        try { (require('@/store/uiStore') as typeof import('@/store/uiStore')).useUiStore.getState().pushToast(`🪦 满格自动清理 ${cleared} 颗低等级`, '🪦', 1) } catch {}
+        get().trySpawnOne()  // 再 spawn
+      }
+    }
     // v2.0：每次 slide 后检测死局
     get().checkDeadlock()
 
@@ -844,6 +854,9 @@ export const useGameStore = create<GameState>((set, get) => ({
     set({ grid: result.grid })
     return true
   },
+
+  // v8.2 init 占位：避免序列化/初始化时缺字段
+  autoRelief: () => 0,
 
   /**
    * 死局检测：满格 + 4 方向无任何可合成
