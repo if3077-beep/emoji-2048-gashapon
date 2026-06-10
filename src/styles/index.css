@@ -206,3 +206,10 @@ body,
 .egg-shimmer {
   animation: eggShimmer 1.4s ease-in-out infinite;
 }
+
+/* ===== v1.2 滑动方向轨迹淡出 ===== */
+@keyframes dirTrailFade {
+  0% { opacity: 0; }
+  20% { opacity: 1; }
+  100% { opacity: 0; }
+}

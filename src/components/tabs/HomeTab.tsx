@@ -82,32 +82,30 @@ export function HomeTab() {
         )}
       </div>
 
-      {/* v0.3 季节 buff 条 */}
+      {/* v0.3 季节 buff 条（v1.2 拆 chip + 防 emoji 堆叠） */}
       <div
-        className="flex w-full max-w-[400px] items-center justify-between rounded-full px-3 py-1.5 text-[11px]"
+        className="flex w-full max-w-[400px] flex-wrap items-center gap-1.5 rounded-2xl px-2.5 py-1.5 text-[10px]"
         style={{
           background: 'linear-gradient(90deg, rgba(251,191,36,0.12), rgba(167,139,250,0.12))',
           border: '1px solid rgba(251,191,36,0.2)',
         }}
       >
-        <div className="flex items-center gap-1.5">
-          <span>{seasonEmoji(buff.season)}</span>
-          <span className="text-white/70">今日 <span className="text-gold-400 font-bold">{seasonLabel(buff.season)}季</span></span>
-          <span className="text-white/30">·</span>
-          <span>幸运区 <span className="text-emerald-400">{buff.luckyZoneName}</span></span>
-          {weekend && (
-            <>
-              <span className="text-white/30">·</span>
-              <span className="text-rose-400 font-bold animate-pulse">🎉 周末双倍</span>
-            </>
-          )}
-        </div>
+        <span className="rounded-full bg-white/[0.06] px-1.5 py-0.5 text-[11px]">{seasonEmoji(buff.season)}</span>
+        <span className="text-white/70">今日 <span className="text-gold-400 font-bold">{seasonLabel(buff.season)}季</span></span>
+        <span className="rounded-full bg-emerald-500/15 px-1.5 py-0.5 text-emerald-300">
+          🍀 {buff.luckyZoneName}
+        </span>
+        {weekend && (
+          <span className="rounded-full bg-rose-500/20 px-1.5 py-0.5 text-rose-300 font-bold animate-pulse">
+            🎉 周末双倍
+          </span>
+        )}
         {buff.multiplier > 1 ? (
-          <span className="rounded-full bg-gold-500/30 px-2 py-0.5 font-mono text-[10px] font-bold text-gold-300">
+          <span className="rounded-full bg-gold-500/30 px-1.5 py-0.5 font-mono font-bold text-gold-300">
             ×{buff.multiplier}
           </span>
         ) : (
-          <span className="text-[10px] text-white/30">5% 暴击</span>
+          <span className="rounded-full bg-white/[0.04] px-1.5 py-0.5 text-white/40">5% 暴击</span>
         )}
       </div>
 

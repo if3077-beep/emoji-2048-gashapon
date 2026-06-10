@@ -73,7 +73,7 @@ export default function App() {
   }
 
   return (
-    <div id="app-root" className="flex h-full flex-col">
+    <div id="app-root" className="mx-auto flex h-full w-full max-w-[480px] flex-col">
       <header className="flex w-full items-center justify-between px-4 py-2 pt-[max(8px,env(safe-area-inset-top))]">
         <div className="flex items-center gap-1.5">
           <span className="text-lg">🌟</span>

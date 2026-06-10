@@ -50,17 +50,54 @@ export function MergeGrid() {
 
   const [sliding, setSliding] = useState<SlideState>({ active: false, startX: 0, startY: 0, startT: 0 })
   const [animTiles, setAnimTiles] = useState<Set<string>>(new Set())
+  const [lastDir, setLastDir] = useState<Dir | null>(null)  // v1.2 滑动方向轨迹
   const containerRef = useRef<HTMLDivElement>(null)
   const THRESHOLD = 28  // 触发滑动的最小距离
 
   const handleDirection = useCallback((dir: Dir, fromX: number, fromY: number) => {
     resumeAudio()
+    setLastDir(dir)  // v1.2 记录最近滑动方向
+    setTimeout(() => setLastDir(null), 400)
     const result = slide(dir)
     if (result.moves.length === 0) {
       // 滑动但无变化：断连击
       sfx.fail()
       return
     }
+    // v1.2：弹动动画（缩放 + 轻微位移）+ 方向轨迹光带
+    setTimeout(() => {
+      if (!containerRef.current) return
+      // 1) 移动过的 cell 做一次弹动
+      const movedSet = new Set(result.moves.map(m => m.to.join(',')))
+      const cells = containerRef.current.querySelectorAll('[data-cell]')
+      cells.forEach(cell => {
+        const pos = (cell as HTMLElement).dataset.cell
+        if (pos && movedSet.has(pos)) {
+          gsap.fromTo(
+            cell,
+            { scale: 0.8, y: dir === 'up' ? 6 : dir === 'down' ? -6 : 0, x: dir === 'left' ? 6 : dir === 'right' ? -6 : 0 },
+            { scale: 1, x: 0, y: 0, duration: 0.32, ease: 'back.out(1.6)' },
+          )
+        }
+      })
+      // 2) 合并位置额外做 ring 缩放
+      const mergeSet = new Set(result.events.map(e => e.pos.join(',')))
+      cells.forEach(cell => {
+        const pos = (cell as HTMLElement).dataset.cell
+        if (pos && mergeSet.has(pos)) {
+          const tween = gsap.fromTo(
+            cell,
+            { boxShadow: '0 0 0 4px rgba(251,191,36,0.95), 0 0 18px rgba(251,191,36,0.7)' },
+            { boxShadow: '0 0 0 0px rgba(251,191,36,0)', duration: 0.55, ease: 'power2.out' },
+          )
+          // 完成后清理（避免持久覆盖样式）
+          tween.eventCallback('onComplete', () => {
+            gsap.set(cell, { clearProps: 'boxShadow' })
+          })
+        }
+      })
+    }, 16)
+
     // 动画：先滑入标记，200ms 后清
     const moved = new Set(result.moves.map(m => m.tileId))
     setAnimTiles(moved)
@@ -171,7 +208,19 @@ export function MergeGrid() {
       onPointerUp={onTouchEnd}
       onPointerLeave={(e) => { if (sliding.active) onTouchEnd(e) }}
     >
-      <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${GRID_SIZE}, 1fr)` }}>
+      <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${GRID_SIZE}, 1fr)`, position: 'relative' }}>
+        {/* v1.2 方向轨迹光带 */}
+        {lastDir && (
+          <div
+            className="pointer-events-none absolute inset-0 z-0"
+            style={{
+              background: lastDir === 'left' || lastDir === 'right'
+                ? 'linear-gradient(90deg, transparent, rgba(251,191,36,0.12), transparent)'
+                : 'linear-gradient(180deg, transparent, rgba(251,191,36,0.12), transparent)',
+              animation: 'dirTrailFade 0.4s ease-out forwards',
+            }}
+          />
+        )}
         {grid.flatMap((row, r) =>
           row.map((tile, c) => {
             const tier = tile ? levelToTier(Math.min(tile.level, 11)) : 0

@@ -139,25 +139,38 @@ export function Gashapon({ onPulled }: GashaponProps) {
         className="relative h-[220px] w-[300px] select-none"
         style={{ touchAction: 'manipulation' }}
       >
-        {/* 主体 */}
+        {/* 主体（v1.2：根据当前主题动态染色 + 主题 emoji 大水印） */}
         <div
-          className="absolute inset-x-0 top-6 h-[200px] rounded-3xl shadow-2xl"
+          className="absolute inset-x-0 top-6 h-[200px] rounded-3xl shadow-2xl transition-colors duration-500"
           style={{
-            background: 'linear-gradient(165deg, #d4c8b8 0%, #bfb0a0 35%, #a89888 65%, #8a7a6c 100%)',
-            boxShadow: '0 16px 60px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.12)',
+            background: `linear-gradient(165deg, ${zone.color}66 0%, ${zone.bg.replace('0.12', '0.35')} 50%, ${zone.glow} 100%)`,
+            boxShadow: `0 16px 60px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.18), 0 0 30px ${zone.glow}`,
           }}
         >
+          {/* v1.2 主题 emoji 大水印（半透明背景） */}
+          <div
+            className="pointer-events-none absolute inset-0 flex items-center justify-center overflow-hidden rounded-3xl"
+            aria-hidden
+          >
+            <span
+              className="select-none text-[200px] leading-none opacity-[0.10]"
+              style={{ filter: 'blur(1px)' }}
+            >
+              {zone.icon}
+            </span>
+          </div>
+
           {/* 显示条 */}
-          <div className="absolute left-4 right-4 top-3.5 flex h-6 items-center rounded-md bg-black/80 px-2.5 font-mono text-[10px] text-white/50">
+          <div className="absolute left-4 right-4 top-3.5 z-10 flex h-6 items-center rounded-md bg-black/80 px-2.5 font-mono text-[10px] text-white/70 ring-1 ring-white/10">
             <span>✦ {zone.name} · 等待中</span>
           </div>
 
           {/* 圆顶展示窗 */}
           <div
             ref={domeRef}
-            className="absolute left-5 right-5 top-[52px] h-[88px] overflow-hidden rounded-2xl ring-1 ring-white/10"
+            className="absolute left-5 right-5 top-[52px] z-10 h-[88px] overflow-hidden rounded-2xl ring-1 ring-white/15"
             style={{
-              background: `radial-gradient(ellipse at 50% 35%, ${zone.glow} 0%, rgba(200,190,180,0.04) 60%)`,
+              background: `radial-gradient(ellipse at 50% 35%, ${zone.glow} 0%, rgba(0,0,0,0.05) 60%)`,
               backdropFilter: 'blur(4px)',
             }}
           >
@@ -166,40 +179,49 @@ export function Gashapon({ onPulled }: GashaponProps) {
                 <span className="text-5xl drop-shadow-lg">{previewEmoji}</span>
               ) : (
                 <>
-                  <span className="text-4xl">{zone.icon}</span>
-                  <span className="mt-1 text-[10px] text-white/40">{zone.subtitle}</span>
+                  <span className="text-4xl drop-shadow">{zone.icon}</span>
+                  <span className="mt-1 text-[10px] text-white/50 font-bold tracking-wider">{zone.subtitle}</span>
                 </>
               )}
             </div>
           </div>
 
           {/* 出蛋口 */}
-          <div className="absolute left-1/2 top-[148px] h-2.5 w-5 -translate-x-1/2 rounded-sm bg-black/60 ring-1 ring-black/40" />
+          <div className="absolute left-1/2 top-[148px] z-10 h-2.5 w-5 -translate-x-1/2 rounded-sm bg-black/60 ring-1 ring-black/40" />
 
           {/* 投币动画 */}
           <div
             ref={coinRef}
-            className="pointer-events-none absolute left-1/2 top-[148px] h-4 w-4 -translate-x-1/2 rounded-full opacity-0"
+            className="pointer-events-none absolute left-1/2 top-[148px] z-10 h-4 w-4 -translate-x-1/2 rounded-full opacity-0"
             style={{
               background: 'radial-gradient(circle at 35% 35%, #ffd700, #c8a000)',
               boxShadow: '0 2px 6px rgba(0,0,0,0.3)',
             }}
           />
 
-          {/* 蛋（v0.8 限定蛋壳支持） */}
+          {/* 蛋（v1.2 蛋壳内部含主题 emoji 水印） */}
           <div
             ref={eggRef}
-            className={`pointer-events-none absolute left-1/2 top-[178px] -translate-x-1/2 ${currentEgg ? 'egg-shimmer' : ''}`}
+            className={`pointer-events-none absolute left-1/2 top-[178px] z-10 -translate-x-1/2 ${currentEgg ? 'egg-shimmer' : ''}`}
             style={currentEgg ? {
               fontSize: '40px',
               filter: `drop-shadow(0 0 12px ${currentEgg.shellColors[1]})`,
             } : { fontSize: '30px' }}
           >
             {currentEgg ? currentEgg.emoji : '🥚'}
+            {/* v1.2 蛋壳内部主题 emoji 水印 */}
+            {currentEgg && (
+              <span
+                className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-base opacity-50"
+                style={{ filter: 'blur(0.4px)' }}
+              >
+                {zone.icon}
+              </span>
+            )}
           </div>
           {currentEgg && (
             <div
-              className="pointer-events-none absolute left-1/2 top-[228px] -translate-x-1/2 whitespace-nowrap rounded-full px-2 py-0.5 text-[8px] font-bold tracking-wider text-white"
+              className="pointer-events-none absolute left-1/2 top-[228px] z-10 -translate-x-1/2 whitespace-nowrap rounded-full px-2 py-0.5 text-[8px] font-bold tracking-wider text-white"
               style={{
                 background: `linear-gradient(90deg, ${currentEgg.shellColors[0]}, ${currentEgg.shellColors[2]})`,
                 boxShadow: `0 0 12px ${currentEgg.shellColors[1]}88`,
@@ -210,25 +232,25 @@ export function Gashapon({ onPulled }: GashaponProps) {
           )}
 
           {/* 品牌 */}
-          <div className="absolute bottom-2 left-0 right-0 text-center text-[8px] tracking-[0.2em] text-black/10">
+          <div className="absolute bottom-2 left-0 right-0 z-10 text-center text-[8px] tracking-[0.2em] text-black/30 font-bold">
             · DRAG & MERGE ·
           </div>
 
           {/* 高光 */}
-          <div className="pointer-events-none absolute inset-0 rounded-3xl bg-gradient-to-br from-white/[0.06] to-transparent" />
+          <div className="pointer-events-none absolute inset-0 z-10 rounded-3xl bg-gradient-to-br from-white/[0.10] to-transparent" />
         </div>
 
-        {/* 摇杆 */}
+        {/* 摇杆（v1.2 摇杆球也跟主题色） */}
         <div
           ref={leverRef}
           className="absolute right-[-18px] top-[60px] z-20 flex flex-col items-center"
           style={{ transformOrigin: '50% 100%' }}
         >
           <div
-            className="h-5 w-5 rounded-full"
+            className="h-5 w-5 rounded-full transition-colors duration-500"
             style={{
-              background: 'radial-gradient(circle at 35% 35%, #ff6b4a, #c83820)',
-              boxShadow: '0 2px 6px rgba(0,0,0,0.4), inset 0 2px 4px rgba(255,255,255,0.3)',
+              background: `radial-gradient(circle at 35% 35%, ${zone.color}, ${zone.glow})`,
+              boxShadow: `0 2px 6px rgba(0,0,0,0.4), inset 0 2px 4px rgba(255,255,255,0.3), 0 0 8px ${zone.glow}`,
             }}
           />
           <div className="-mt-0.5 h-8 w-1 rounded-sm bg-gradient-to-b from-gray-400 to-gray-600" />
