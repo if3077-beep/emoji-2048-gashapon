@@ -67,64 +67,99 @@ export function MergeGrid() {
       sfx.fail()
       return
     }
-    // v1.2：弹动动画（缩放 + 轻微位移）+ 方向轨迹光带
+    // v4.0 重做轨迹动画：起点光球 + 流光带扫过 + 粒子尾迹
     setTimeout(() => {
       if (!containerRef.current) return
-      // 1) 移动过的 cell 做一次弹动
-      const movedSet = new Set(result.moves.map(m => m.to.join(',')))
-      const cells = containerRef.current.querySelectorAll('[data-cell]')
-      cells.forEach(cell => {
-        const pos = (cell as HTMLElement).dataset.cell
-        if (pos && movedSet.has(pos)) {
-          gsap.fromTo(
-            cell,
-            { scale: 0.85, y: dir === 'up' ? 8 : dir === 'down' ? -8 : 0, x: dir === 'left' ? 8 : dir === 'right' ? -8 : 0 },
-            { scale: 1, x: 0, y: 0, duration: 0.36, ease: 'back.out(1.6)' },
-          )
-          // v3.0 移动轨迹闪绿光 ring（说明这一格是经过的位置）
-          gsap.fromTo(
-            cell,
-            { boxShadow: '0 0 0 2px rgba(74,222,128,0.85), 0 0 12px rgba(74,222,128,0.55)' },
-            { boxShadow: '0 0 0 0 rgba(74,222,128,0)', duration: 0.5, delay: 0.05, ease: 'power2.out' },
-          )
+      const grid = containerRef.current
+      const rect = grid.getBoundingClientRect()
+      const cellW = (rect.width - 24) / GRID_SIZE
+      const cellH = (rect.height - 24 - 50) / GRID_SIZE
+
+      // 1) 起点（result.moves 第一格的 from）和终点（最后 to）
+      const start = result.moves[0]?.from
+      const end = result.moves[result.moves.length - 1]?.to
+      const isHorizontal = dir === 'left' || dir === 'right'
+
+      // 2) 起点光球：放射状 burst + 缩放
+      if (start) {
+        const startX = (start[1] + 0.5) * cellW + 12
+        const startY = (start[0] + 0.5) * cellH + 12
+        const ball = document.createElement('div')
+        ball.className = 'pointer-events-none absolute z-30'
+        ball.style.cssText = `left:0;top:0;width:${cellW}px;height:${cellH}px;transform:translate(${startX - cellW / 2}px,${startY - cellH / 2}px);`
+        const inner = document.createElement('div')
+        inner.style.cssText = `width:100%;height:100%;border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,0.95),rgba(251,191,36,0.7) 30%,rgba(251,191,36,0) 70%);box-shadow:0 0 32px rgba(251,191,36,0.95),0 0 64px rgba(251,146,60,0.6);`
+        ball.appendChild(inner)
+        grid.appendChild(ball)
+        gsap.fromTo(ball, { scale: 0, opacity: 0 }, { scale: 1.4, opacity: 1, duration: 0.15, ease: 'power2.out' })
+        gsap.to(ball, { scale: 0.3, opacity: 0, duration: 0.5, delay: 0.2, ease: 'power2.in', onComplete: () => ball.remove() })
+      }
+
+      // 3) 流光带（用 linear-gradient + animation 0.45s 扫过整个 grid）
+      if (end) {
+        const endX = (end[1] + 0.5) * cellW + 12
+        const endY = (end[0] + 0.5) * cellH + 12
+        const beam = document.createElement('div')
+        beam.className = 'pointer-events-none absolute z-20'
+        if (isHorizontal) {
+          // 横向：竖条 width 4px 滑过
+          const isRight = dir === 'right'
+          beam.style.cssText = `left:0;top:0;width:6px;height:${rect.height - 74}px;transform:translate(${isRight ? 0 : rect.width - 6}px,12px);background:linear-gradient(180deg,transparent,rgba(251,191,36,0.95) 20%,rgba(255,255,255,1) 50%,rgba(251,191,36,0.95) 80%,transparent);box-shadow:0 0 24px rgba(251,191,36,0.9),0 0 48px rgba(255,255,255,0.5);`
+          grid.appendChild(beam)
+          gsap.fromTo(beam, { x: 0 }, { x: isRight ? rect.width - 6 : -(rect.width - 6), duration: 0.4, ease: 'power2.out' })
+          gsap.to(beam, { opacity: 0, duration: 0.2, delay: 0.35, onComplete: () => beam.remove() })
+        } else {
+          // 纵向：横条 height 6px 滑过
+          const isDown = dir === 'down'
+          beam.style.cssText = `left:0;top:0;width:${rect.width - 24}px;height:6px;transform:translate(12px,${isDown ? 0 : rect.height - 80}px);background:linear-gradient(90deg,transparent,rgba(251,191,36,0.95) 20%,rgba(255,255,255,1) 50%,rgba(251,191,36,0.95) 80%,transparent);box-shadow:0 0 24px rgba(251,191,36,0.9),0 0 48px rgba(255,255,255,0.5);`
+          grid.appendChild(beam)
+          gsap.fromTo(beam, { y: 0 }, { y: isDown ? rect.height - 86 : -(rect.height - 86), duration: 0.4, ease: 'power2.out' })
+          gsap.to(beam, { opacity: 0, duration: 0.2, delay: 0.35, onComplete: () => beam.remove() })
         }
+        // 终点爆裂：径向 burst
+        const burst = document.createElement('div')
+        burst.className = 'pointer-events-none absolute z-30'
+        burst.style.cssText = `left:0;top:0;width:60px;height:60px;transform:translate(${endX - 30}px,${endY - 30}px);background:radial-gradient(circle,rgba(255,255,255,0.95),rgba(251,191,36,0.7) 40%,transparent 70%);`
+        grid.appendChild(burst)
+        gsap.fromTo(burst, { scale: 0, opacity: 0 }, { scale: 1.6, opacity: 1, duration: 0.18, ease: 'power2.out' })
+        gsap.to(burst, { scale: 2.4, opacity: 0, duration: 0.42, delay: 0.12, ease: 'power2.in', onComplete: () => burst.remove() })
+      }
+
+      // 4) 移动过的 cell 依次闪光（沿轨迹方向 30ms 延迟）
+      const movedList = result.moves.map(m => m.to)
+      movedList.forEach((pos, i) => {
+        const cell = grid.querySelector(`[data-cell="${pos[0]},${pos[1]}"]`) as HTMLElement | null
+        if (!cell) return
+        gsap.fromTo(
+          cell,
+          { boxShadow: 'inset 0 0 0 2px rgba(255,255,255,0.95), 0 0 16px rgba(255,255,255,0.7)' },
+          { boxShadow: 'inset 0 0 0 0 rgba(255,255,255,0), 0 0 0 rgba(255,255,255,0)', duration: 0.4, delay: i * 0.04, ease: 'power2.out' },
+        )
       })
-      // 2) 合并位置额外做 ring 缩放（金色更亮）
-      const mergeSet = new Set(result.events.map(e => e.pos.join(',')))
-      cells.forEach(cell => {
-        const pos = (cell as HTMLElement).dataset.cell
-        if (pos && mergeSet.has(pos)) {
+
+      // 5) 粒子尾迹：在起点向终点方向撒 6-8 个 ⭐ 颗粒（沿反方向飞）
+      if (start && end) {
+        const sx = (start[1] + 0.5) * cellW + 12
+        const sy = (start[0] + 0.5) * cellH + 12
+        const dirX = isHorizontal ? (dir === 'right' ? 1 : -1) : 0
+        const dirY = isHorizontal ? 0 : (dir === 'down' ? 1 : -1)
+        const particleCount = Math.min(8, 4 + movedList.length)
+        for (let i = 0; i < particleCount; i++) {
+          const p = document.createElement('div')
+          p.textContent = ['⭐', '✨', '💫', '🌟'][i % 4]
+          p.className = 'pointer-events-none absolute z-30'
+          p.style.cssText = `left:${sx - 6}px;top:${sy - 6}px;font-size:14px;`
+          grid.appendChild(p)
+          // 沿反方向 + 随机垂直分量飘 0.5s
+          const offsetX = -dirX * (30 + Math.random() * 60) + (isHorizontal ? 0 : (Math.random() - 0.5) * 30)
+          const offsetY = -dirY * (30 + Math.random() * 60) + (isHorizontal ? (Math.random() - 0.5) * 30 : 0)
           gsap.fromTo(
-            cell,
-            { boxShadow: '0 0 0 5px rgba(251,191,36,1), 0 0 28px rgba(251,191,36,0.95)' },
-            { boxShadow: '0 0 0 0 rgba(251,191,36,0)', duration: 0.65, ease: 'power2.out' },
+            p,
+            { x: 0, y: 0, scale: 0, opacity: 0, rotation: 0 },
+            { x: offsetX, y: offsetY, scale: 1.4, opacity: 1, rotation: 360, duration: 0.15, ease: 'power2.out' },
           )
+          gsap.to(p, { x: offsetX * 1.6, y: offsetY * 1.6, scale: 0, opacity: 0, duration: 0.4, delay: 0.12, ease: 'power2.in', onComplete: () => p.remove() })
         }
-      })
-      // 3) v3.0 移动起止点连线：在 grid 上画一道金色连线（from → to）-- 用临时 SVG
-      if (result.moves.length > 0 && containerRef.current) {
-        const rect = containerRef.current.getBoundingClientRect()
-        const cellW = (rect.width - 24) / GRID_SIZE  // 24 = p-3 * 2
-        const cellH = (rect.height - 24 - 50) / GRID_SIZE  // 扣掉 padding 和 dpad 行
-        const svgNS = 'http://www.w3.org/2000/svg'
-        const svg = document.createElementNS(svgNS, 'svg')
-        svg.setAttribute('class', 'pointer-events-none absolute inset-3 z-20')
-        svg.setAttribute('width', String(rect.width - 24))
-        svg.setAttribute('height', String(rect.height - 24 - 50))
-        const path = document.createElementNS(svgNS, 'path')
-        const pts = result.moves.map(m => `${(m.to[1] + 0.5) * cellW},${(m.to[0] + 0.5) * cellH}`)
-        path.setAttribute('d', `M ${pts.join(' L ')}`)
-        path.setAttribute('stroke', 'rgba(251,191,36,0.85)')
-        path.setAttribute('stroke-width', '2')
-        path.setAttribute('fill', 'none')
-        path.setAttribute('stroke-linecap', 'round')
-        path.setAttribute('stroke-linejoin', 'round')
-        path.setAttribute('stroke-dasharray', '4 3')
-        svg.appendChild(path)
-        containerRef.current.appendChild(svg)
-        const totalLen = path.getTotalLength ? path.getTotalLength() : 200
-        gsap.fromTo(path, { strokeDashoffset: totalLen }, { strokeDashoffset: 0, duration: 0.5, ease: 'power2.out' })
-        gsap.to(svg, { opacity: 0, duration: 0.4, delay: 0.6, onComplete: () => svg.remove() })
       }
     }, 16)
 
@@ -176,6 +211,28 @@ export function MergeGrid() {
               { y: -34, scale: 1.3, opacity: 1, duration: 0.25, ease: 'back.out(1.7)' },
             )
             gsap.to(fly, { y: -56, opacity: 0, duration: 0.55, delay: 0.3, ease: 'power1.in', onComplete: () => fly.remove() })
+            // v4.2 合成后的 emoji 粒子飞起（核心 emoji + 主题色）
+            const tile = grid[evt.pos[0]]?.[evt.pos[1]]
+            if (tile) {
+              const newEmoji = getEmoji(tile)
+              const newLevel = tile.level
+              for (let p = 0; p < 3; p++) {
+                const ep = document.createElement('div')
+                ep.textContent = newEmoji
+                ep.className = 'pointer-events-none absolute left-1/2 top-1/2 z-30 -translate-x-1/2 -translate-y-1/2'
+                ep.style.fontSize = '20px'
+                ep.style.filter = `drop-shadow(0 0 6px ${isCrit ? '#ef4444' : isLucky ? '#a3e635' : '#fbbf24'})`
+                cell.appendChild(ep)
+                const angle = (p - 1) * 0.6 + (Math.random() - 0.5) * 0.4
+                const dist = 36 + Math.random() * 24
+                gsap.fromTo(
+                  ep,
+                  { x: 0, y: 0, scale: 0.3, opacity: 0, rotation: 0 },
+                  { x: Math.sin(angle) * dist, y: -Math.cos(angle) * dist - 20, scale: newLevel > 11 ? 1.4 : 1, opacity: 1, rotation: angle * 100, duration: 0.4, ease: 'power2.out' },
+                )
+                gsap.to(ep, { y: `+=${40}`, opacity: 0, scale: 0.3, duration: 0.5, delay: 0.4, ease: 'power2.in', onComplete: () => ep.remove() })
+              }
+            }
           }
         }
         if (evt.kind === 'merge_mythic' || evt.kind === 'merge_epic') {
