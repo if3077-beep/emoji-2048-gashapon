@@ -6,6 +6,7 @@ import { MergeGrid } from '@/components/grid/MergeGrid'
 import { AutoMergeButton } from '@/components/ui/AutoMergeButton'
 import { WorldRing } from '@/components/ui/WorldRing'
 import { CoinDisplay } from '@/components/ui/CoinDisplay'
+import { DeadlockPanel } from '@/components/ui/DeadlockPanel'
 import { useGameStore } from '@/store/gameStore'
 import { useUiStore } from '@/store/uiStore'
 import { ZONES, MAX_LEVEL, type ZoneId, ZONE_LIST } from '@/data/emoji-trees'
@@ -50,7 +51,8 @@ export function HomeTab() {
   const weekend = isWeekendDouble()
 
   return (
-    <div className="flex w-full flex-col items-center gap-3 px-3 py-2">
+    <div className="flex w-full flex-col items-center gap-2.5 px-3 py-2">
+      {/* v5.0 整合：主页 = 货币条 + 季节buff + 卦象 + 主题 + 扭蛋机 + 网格 + 任务 */}
       {/* 货币 + 最高 + Combo + v0.4 入口 */}
       <div className="flex w-full max-w-[400px] items-center gap-1.5">
         <div className="glass flex flex-1 items-center gap-1.5 rounded-full px-2.5 py-1.5">
@@ -158,16 +160,22 @@ export function HomeTab() {
       </button>
 
       {/* v1.1 主题推荐卡（卡关时显示） */}
-      <ZoneSuggestion zoneMax={zoneMax} onPick={() => setTab('merge')} />
+      <ZoneSuggestion zoneMax={zoneMax} />
+
+      {/* v2.0 死局提示卡 */}
+      <DeadlockPanel />
 
       {/* 扭蛋机 */}
       <Gashapon />
 
-      {/* 网格 */}
+      {/* v5.0 网格：4×4 紧贴扭蛋机下方 */}
       <MergeGrid />
 
       {/* v0.7 一键合并按钮 */}
       <AutoMergeButton />
+
+      {/* v5.3 streak bar：连续成功滑动进度（3 格填满奖励） */}
+      <StreakBar />
 
       {/* v0.9 世界进度环 */}
       <WorldRing />
@@ -182,6 +190,57 @@ export function HomeTab() {
       <div className="w-full max-w-[400px] text-center text-[10px] text-white/25">
         累计扭蛋 {totalPulls} 次 · 最佳连击 {useGameStore.getState().bestCombo} · 挑战 {challengesDone}/{challenges.length}
       </div>
+    </div>
+  )
+}
+
+/**
+ * v5.3 streak bar：连续成功滑动进度（3 格填满奖励 +5🪙）
+ * - 显示在网格下方，3 个圆点
+ * - streak=0 隐藏，streak>=1 显示
+ * - streak>=3 闪烁 + 满格高亮
+ */
+function StreakBar() {
+  const slideStreak = useGameStore(s => s.slideStreak)
+  if (slideStreak <= 0) return null
+  const next = slideStreak % 3
+  const filled = next === 0 ? 3 : next
+  const justCompleted = slideStreak > 0 && slideStreak % 3 === 0
+  return (
+    <div
+      className="flex w-full max-w-[400px] items-center justify-center gap-1.5 rounded-2xl px-3 py-1.5"
+      style={{
+        background: justCompleted ? 'rgba(251,191,36,0.15)' : 'rgba(255,255,255,0.03)',
+        border: `1px solid ${justCompleted ? 'rgba(251,191,36,0.4)' : 'rgba(255,255,255,0.05)'}`,
+        animation: justCompleted ? 'streakCelebrate 0.5s ease-out' : undefined,
+      }}
+    >
+      <span className="text-[10px] text-white/50">🔥 连滑</span>
+      <div className="flex items-center gap-1">
+        {[0, 1, 2].map(i => (
+          <div
+            key={i}
+            className="h-2 w-2 rounded-full transition-all"
+            style={{
+              background: i < filled
+                ? 'linear-gradient(90deg, #f97316, #fbbf24)'
+                : 'rgba(255,255,255,0.1)',
+              boxShadow: i < filled ? '0 0 6px rgba(251,191,36,0.7)' : 'none',
+            }}
+          />
+        ))}
+      </div>
+      <span className={`font-mono text-[10px] font-bold ${justCompleted ? 'text-gold-300 animate-pulse' : 'text-white/60'}`}>
+        {slideStreak}
+      </span>
+      <span className="text-[9px] text-white/30">/ 3 → +5🪙</span>
+      <style>{`
+        @keyframes streakCelebrate {
+          0%   { transform: scale(1); }
+          50%  { transform: scale(1.05); }
+          100% { transform: scale(1); }
+        }
+      `}</style>
     </div>
   )
 }
@@ -279,7 +338,7 @@ function DailyTasks({ tasks, onClaim }: { tasks: any[]; onClaim: (id: string) =>
  * - 规则 2：其次推荐"未通关"主题（max<11）且与当前主题不同
  * - 规则 3：如果玩家已经通了一半以上主题，则不显示（避免打扰）
  */
-function ZoneSuggestion({ zoneMax, onPick }: { zoneMax: Record<ZoneId, number>; onPick: () => void }) {
+function ZoneSuggestion({ zoneMax }: { zoneMax: Record<ZoneId, number> }) {
   const currentZone = useGameStore(s => s.currentZone)
   const setZone = useGameStore(s => s.setZone)
   const openZoneGallery = useUiStore(s => s.openZoneGallery)
@@ -339,7 +398,7 @@ function ZoneSuggestion({ zoneMax, onPick }: { zoneMax: Record<ZoneId, number>; 
           onClick={() => {
             setZone(pick.zid)
             setGuide(`已切换到 ${pick.z.name}`)
-            onPick()
+            // v5.0 主页已含合成网格，不再跳转
           }}
           className="touch-target rounded-full bg-white/15 px-3 py-1 text-[11px] font-bold text-white active:scale-95"
           style={{ border: `1px solid ${pick.z.color}55` }}

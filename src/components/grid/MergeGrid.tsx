@@ -13,7 +13,7 @@ import { calcReward, getReward, type EventKind } from '@/lib/event-rewards'
 import { useRef, useState, useCallback, useEffect } from 'react'
 import gsap from 'gsap'
 import { Dpad } from './Dpad'
-import { detectMatch3 } from '@/lib/auto-merge'
+import { detectMatch3, findLongestMatch } from '@/lib/auto-merge'
 
 const TIER_CLASS = ['tier-common', 'tier-rare', 'tier-epic', 'tier-legend']
 
@@ -136,6 +136,72 @@ export function MergeGrid() {
           { boxShadow: 'inset 0 0 0 0 rgba(255,255,255,0), 0 0 0 rgba(255,255,255,0)', duration: 0.4, delay: i * 0.04, ease: 'power2.out' },
         )
       })
+
+      // 4b) v5.2 合并位置 tile 浮起（translateY -8 持续 0.35s）
+      const mergeSet = new Set(result.events.map(e => e.pos.join(',')))
+      Array.from(mergeSet).forEach((posKey, i) => {
+        const cell = grid.querySelector(`[data-cell="${posKey}"]`) as HTMLElement | null
+        if (!cell) return
+        // 浮起 + 弹回
+        gsap.fromTo(
+          cell,
+          { y: 0, scale: 1, boxShadow: '0 -8px 0 0 rgba(251,191,36,0.4), 0 0 24px rgba(251,191,36,0.7)' },
+          {
+            y: -10,
+            scale: 1.12,
+            duration: 0.18,
+            delay: i * 0.04,
+            ease: 'power2.out',
+            onComplete: () => {
+              gsap.to(cell, { y: 0, scale: 1, duration: 0.32, ease: 'bounce.out' })
+              gsap.to(cell, { clearProps: 'boxShadow', duration: 0.4, delay: 0.05 })
+            },
+          },
+        )
+      })
+
+      // 4c) v5.2 4+ 连锁 → grid 整体震动 + 5+ 连锁 → 粒子向上汇聚
+      const matched = findLongestMatch(result.grid).longest
+      if (matched >= 4) {
+        gsap.fromTo(
+          grid,
+          { x: -3, y: 2 },
+          { x: 0, y: 0, duration: 0.4, ease: 'elastic.out(1, 0.3)' },
+        )
+        if (matched >= 5) {
+          // 撒 12 个 ⭐ 粒子向上汇聚（多从合并位置生成）
+          const particleCount = 12
+          for (let p = 0; p < particleCount; p++) {
+            const ev = result.events[p % Math.max(1, result.events.length)]
+            if (!ev) continue
+            const px = (ev.pos[1] + 0.5) * cellW + 12
+            const py = (ev.pos[0] + 0.5) * cellH + 12
+            const particle = document.createElement('div')
+            particle.textContent = ['⭐', '✨', '💫', '🌟', '💛'][p % 5]
+            particle.className = 'pointer-events-none absolute z-30'
+            particle.style.cssText = `left:${px - 8}px;top:${py - 8}px;font-size:16px;filter:drop-shadow(0 0 6px #fbbf24);`
+            grid.appendChild(particle)
+            const targetX = px + (Math.random() - 0.5) * 80
+            const targetY = -30
+            gsap.fromTo(
+              particle,
+              { x: 0, y: 0, scale: 0.3, opacity: 0, rotation: 0 },
+              {
+                x: targetX - px,
+                y: targetY - py,
+                scale: 1.4,
+                opacity: 1,
+                rotation: 720,
+                duration: 0.8,
+                ease: 'power2.out',
+                onComplete: () => {
+                  gsap.to(particle, { y: '-=40', opacity: 0, scale: 0.3, duration: 0.3, onComplete: () => particle.remove() })
+                },
+              },
+            )
+          }
+        }
+      }
 
       // 5) 粒子尾迹：在起点向终点方向撒 6-8 个 ⭐ 颗粒（沿反方向飞）
       if (start && end) {

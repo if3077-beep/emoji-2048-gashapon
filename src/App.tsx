@@ -5,7 +5,6 @@ import { useEffect, useState } from 'react'
 import { useGameStore } from '@/store/gameStore'
 import { useUiStore } from '@/store/uiStore'
 import { HomeTab } from '@/components/tabs/HomeTab'
-import { MergeTab } from '@/components/tabs/MergeTab'
 import { CollectionTab } from '@/components/tabs/CollectionTab'
 import { MoreTab } from '@/components/tabs/MoreTab'
 import { Pet } from '@/components/pet/Pet'
@@ -29,9 +28,9 @@ import { SynergiesPanel } from '@/components/ui/SynergiesPanel'
 import { AchievementUnlockModal } from '@/components/ui/AchievementUnlockModal'
 import { AwakenBurst } from '@/components/ui/AwakenBurst'
 
+// v5.0 底栏 3 列：主页（已整合合成 + 扭蛋机）/ 图鉴 / 更多
 const TABS = [
   { id: 'home' as const, icon: '🏠', label: '主页' },
-  { id: 'merge' as const, icon: '🧬', label: '合成' },
   { id: 'collection' as const, icon: '📖', label: '图鉴' },
   { id: 'more' as const, icon: '⚙️', label: '更多' },
 ]
@@ -94,7 +93,6 @@ export default function App() {
       <main className="flex-1 overflow-y-auto scrollbar-hidden pb-[max(70px,calc(60px+env(safe-area-inset-bottom)))]">
         <div key={tab} className="animate-pop">
           {tab === 'home' && <HomeTab />}
-          {tab === 'merge' && <MergeTab />}
           {tab === 'collection' && <CollectionTab />}
           {tab === 'more' && <MoreTab />}
         </div>

@@ -51,6 +51,8 @@ interface GameState {
   mergeCount: number
   combo: number
   bestCombo: number
+  /** v5.3 连续成功滑动次数（每 3 次 +5🪙，失败清零） */
+  slideStreak: number
   maxLevel: number
   zoneMax: Record<ZoneId, number>
   currentZone: ZoneId
@@ -175,6 +177,7 @@ const init = () => {
       mergeCount: saved.mergeCount ?? 0,
       combo: saved.combo ?? 0,
       bestCombo: saved.bestCombo ?? 0,
+      slideStreak: 0,
       maxLevel: saved.maxLevel ?? 0,
       zoneMax: saved.zoneMax ?? defaultZoneMax(),
       currentZone: saved.currentZone ?? ('creature' as ZoneId),
@@ -216,6 +219,7 @@ const init = () => {
     mergeCount: 0,
     combo: 0,
     bestCombo: 0,
+    slideStreak: 0,
     maxLevel: 0,
     zoneMax: defaultZoneMax(),
     currentZone: 'creature' as ZoneId,
@@ -354,12 +358,22 @@ export const useGameStore = create<GameState>((set, get) => ({
     if (!result.moved) {
       // 滑动无效 → 断连击
       if (state.combo > 0) set({ combo: 0 })
+      // v5.3 streak 清零
+      if (state.slideStreak > 0) set({ slideStreak: 0 })
       return result
     }
 
-    let { coins, combo, bestCombo, mergeCount, maxLevel, zoneMax, collection } = state
+    let { coins, combo, bestCombo, mergeCount, maxLevel, zoneMax, collection, slideStreak } = state
     combo++
     if (combo > bestCombo) bestCombo = combo
+    // v5.3 streak：连续成功滑动
+    slideStreak++
+    let streakBonus = 0
+    if (slideStreak > 0 && slideStreak % 3 === 0) {
+      // 每 3 次连续成功滑动奖励 5 币
+      streakBonus = 5
+      coins += streakBonus
+    }
 
     // 累计 mergeCount
     mergeCount += result.events.length
@@ -411,6 +425,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       coins,
       combo,
       bestCombo,
+      slideStreak,
       mergeCount,
       maxLevel,
       zoneMax,
@@ -423,6 +438,11 @@ export const useGameStore = create<GameState>((set, get) => ({
     }
     set(updates)
     get().updateTasks(t => t.desc.includes('合成'), 1)
+
+    // v5.3 streak 满 3 推送 toast + 奖励音效
+    if (streakBonus > 0) {
+      try { (require('@/store/uiStore') as typeof import('@/store/uiStore')).useUiStore.getState().pushToast(`🔥 ${slideStreak} 连滑 +${streakBonus}🪙`, '🔥', 2) } catch {}
+    }
 
     // v2.0：slide 后自动 spawn 1 个新 tile（修"slide 后不生成胶囊"卡死 bug）
     get().trySpawnOne()
