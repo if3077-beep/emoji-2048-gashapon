@@ -78,33 +78,60 @@ export function MergeGrid() {
         if (pos && movedSet.has(pos)) {
           gsap.fromTo(
             cell,
-            { scale: 0.8, y: dir === 'up' ? 6 : dir === 'down' ? -6 : 0, x: dir === 'left' ? 6 : dir === 'right' ? -6 : 0 },
-            { scale: 1, x: 0, y: 0, duration: 0.32, ease: 'back.out(1.6)' },
+            { scale: 0.85, y: dir === 'up' ? 8 : dir === 'down' ? -8 : 0, x: dir === 'left' ? 8 : dir === 'right' ? -8 : 0 },
+            { scale: 1, x: 0, y: 0, duration: 0.36, ease: 'back.out(1.6)' },
+          )
+          // v3.0 移动轨迹闪绿光 ring（说明这一格是经过的位置）
+          gsap.fromTo(
+            cell,
+            { boxShadow: '0 0 0 2px rgba(74,222,128,0.85), 0 0 12px rgba(74,222,128,0.55)' },
+            { boxShadow: '0 0 0 0 rgba(74,222,128,0)', duration: 0.5, delay: 0.05, ease: 'power2.out' },
           )
         }
       })
-      // 2) 合并位置额外做 ring 缩放
+      // 2) 合并位置额外做 ring 缩放（金色更亮）
       const mergeSet = new Set(result.events.map(e => e.pos.join(',')))
       cells.forEach(cell => {
         const pos = (cell as HTMLElement).dataset.cell
         if (pos && mergeSet.has(pos)) {
-          const tween = gsap.fromTo(
+          gsap.fromTo(
             cell,
-            { boxShadow: '0 0 0 4px rgba(251,191,36,0.95), 0 0 18px rgba(251,191,36,0.7)' },
-            { boxShadow: '0 0 0 0px rgba(251,191,36,0)', duration: 0.55, ease: 'power2.out' },
+            { boxShadow: '0 0 0 5px rgba(251,191,36,1), 0 0 28px rgba(251,191,36,0.95)' },
+            { boxShadow: '0 0 0 0 rgba(251,191,36,0)', duration: 0.65, ease: 'power2.out' },
           )
-          // 完成后清理（避免持久覆盖样式）
-          tween.eventCallback('onComplete', () => {
-            gsap.set(cell, { clearProps: 'boxShadow' })
-          })
         }
       })
+      // 3) v3.0 移动起止点连线：在 grid 上画一道金色连线（from → to）-- 用临时 SVG
+      if (result.moves.length > 0 && containerRef.current) {
+        const rect = containerRef.current.getBoundingClientRect()
+        const cellW = (rect.width - 24) / GRID_SIZE  // 24 = p-3 * 2
+        const cellH = (rect.height - 24 - 50) / GRID_SIZE  // 扣掉 padding 和 dpad 行
+        const svgNS = 'http://www.w3.org/2000/svg'
+        const svg = document.createElementNS(svgNS, 'svg')
+        svg.setAttribute('class', 'pointer-events-none absolute inset-3 z-20')
+        svg.setAttribute('width', String(rect.width - 24))
+        svg.setAttribute('height', String(rect.height - 24 - 50))
+        const path = document.createElementNS(svgNS, 'path')
+        const pts = result.moves.map(m => `${(m.to[1] + 0.5) * cellW},${(m.to[0] + 0.5) * cellH}`)
+        path.setAttribute('d', `M ${pts.join(' L ')}`)
+        path.setAttribute('stroke', 'rgba(251,191,36,0.85)')
+        path.setAttribute('stroke-width', '2')
+        path.setAttribute('fill', 'none')
+        path.setAttribute('stroke-linecap', 'round')
+        path.setAttribute('stroke-linejoin', 'round')
+        path.setAttribute('stroke-dasharray', '4 3')
+        svg.appendChild(path)
+        containerRef.current.appendChild(svg)
+        const totalLen = path.getTotalLength ? path.getTotalLength() : 200
+        gsap.fromTo(path, { strokeDashoffset: totalLen }, { strokeDashoffset: 0, duration: 0.5, ease: 'power2.out' })
+        gsap.to(svg, { opacity: 0, duration: 0.4, delay: 0.6, onComplete: () => svg.remove() })
+      }
     }, 16)
 
     // 动画：先滑入标记，200ms 后清
     const moved = new Set(result.moves.map(m => m.tileId))
     setAnimTiles(moved)
-    setTimeout(() => setAnimTiles(new Set()), 400)
+    setTimeout(() => setAnimTiles(new Set()), 500)
 
     // 触发效果
     result.events.forEach((evt, i) => {
@@ -131,6 +158,25 @@ export function MergeGrid() {
           else if (evt.level >= 5) sfx.rare()
           if (evt.level === 11) sfx.celebrate()
           if (evt.level > 11) sfx.celebrate()
+        }
+        // v3.0 数字飘字：直接在合并 cell 上冒泡（额外反馈）
+        if (containerRef.current) {
+          const cell = containerRef.current.querySelector(`[data-cell="${evt.pos[0]},${evt.pos[1]}"]`) as HTMLElement | null
+          if (cell) {
+            const flyText = isCrit ? `💥 +${finalAmount}` : isLucky ? `🍀 +${finalAmount}` : `+${finalAmount}`
+            const fly = document.createElement('div')
+            fly.textContent = flyText
+            fly.className = 'pointer-events-none absolute left-1/2 top-1/2 z-30 -translate-x-1/2 -translate-y-1/2 font-mono text-sm font-extrabold'
+            fly.style.color = isCrit ? '#ef4444' : isLucky ? '#a3e635' : '#fde68a'
+            fly.style.textShadow = '0 0 6px rgba(0,0,0,0.6), 0 0 12px currentColor'
+            cell.appendChild(fly)
+            gsap.fromTo(
+              fly,
+              { y: 0, scale: 0.6, opacity: 0 },
+              { y: -34, scale: 1.3, opacity: 1, duration: 0.25, ease: 'back.out(1.7)' },
+            )
+            gsap.to(fly, { y: -56, opacity: 0, duration: 0.55, delay: 0.3, ease: 'power1.in', onComplete: () => fly.remove() })
+          }
         }
         if (evt.kind === 'merge_mythic' || evt.kind === 'merge_epic') {
           // 升级射线

@@ -74,9 +74,9 @@ export function Pet() {
       const dist = Math.hypot(x - last2.x, y - last2.y)
       const speed = dist / dt  // px/ms
       lastPointerRef.current = { x, y, t, speed }
-      // 目标位置稍微偏离鼠标（避免完全重叠）
-      stateRef.current.targetX = x - 30
-      stateRef.current.targetY = y - 60
+      // v3.0 离光标 90px（左上偏移），避免重叠
+      stateRef.current.targetX = x - 90
+      stateRef.current.targetY = y - 110
       stateRef.current.lastMoveAt = Date.now()
     }
 
@@ -135,7 +135,31 @@ export function Pet() {
   if (!pet || !behavior) return null
 
   const s = stateRef.current
-  const size = 60 * pet.sizeScale
+  const size = 64 * pet.sizeScale
+
+  // v3.0 形态尾巴/耳朵点缀（按 form + species 选不同）
+  const accessoryEmoji = (() => {
+    if (pet.form === 'egg') return ''
+    if (pet.form === 'awakened') {
+      if (pet.species === 'dragon') return '🪽'
+      if (pet.species === 'phoenix') return '🔥'
+      if (pet.species === 'unicorn') return '🌈'
+      return '✨'
+    }
+    if (pet.species === 'rabbit') return '🥕'
+    if (pet.species === 'cat') return '🐟'
+    if (pet.species === 'fox') return '🍃'
+    if (pet.species === 'dragon') return '💎'
+    if (pet.species === 'deer') return '🌿'
+    if (pet.species === 'bear') return '🍯'
+    if (pet.species === 'crane') return '☁️'
+    if (pet.species === 'fish') return '🫧'
+    if (pet.species === 'butterfly') return '🌸'
+    if (pet.species === 'owl') return '🌙'
+    if (pet.species === 'unicorn') return '⭐'
+    if (pet.species === 'phoenix') return '☀️'
+    return '💫'
+  })()
 
   const handleClick = () => {
     resumeAudio()
@@ -213,24 +237,48 @@ export function Pet() {
         className="relative cursor-pointer touch-target"
         style={{ width: size, height: size }}
       >
-        {/* 光晕 */}
+        {/* v3.0 外圈光晕呼吸（按 affection + form 动态） */}
         <div
-          className="absolute inset-0 rounded-full opacity-50 blur-xl"
-          style={{ background: cssColor }}
-        />
-        {/* 宠物主体 */}
-        <div
-          className="relative flex h-full w-full items-center justify-center rounded-full text-[calc(40px*var(--pet-scale,1))] ring-2 ring-white/20"
+          className="absolute -inset-3 rounded-full opacity-70 blur-2xl"
           style={{
-            background: `radial-gradient(circle at 35% 30%, hsl(${pet.hue} ${pet.saturation + 10}% ${pet.lightness + 20}%), ${cssColor})`,
+            background: `radial-gradient(circle, ${cssColor}, transparent 70%)`,
+            animation: pet.form === 'awakened' ? 'petGlowPulse 1.2s ease-in-out infinite' : 'petGlowPulse 2.4s ease-in-out infinite',
+          }}
+        />
+        {/* 宠物主体（v3.0 环形 ring 跟随 form 升级） */}
+        <div
+          className="relative flex h-full w-full items-center justify-center rounded-full ring-4"
+          style={{
+            background: `radial-gradient(circle at 35% 30%, hsl(${pet.hue} ${pet.saturation + 10}% ${pet.lightness + 20}%) 0%, ${cssColor} 60%, hsl(${pet.hue} ${pet.saturation - 10}% ${pet.lightness - 15}%) 100%)`,
             // CSS 变量供 emoji 大小
             ['--pet-scale' as any]: pet.sizeScale,
-            transform: s.action === 'jump' ? 'translateY(-12px) scale(1.15)' : s.action === 'yawn' ? 'scale(0.95)' : 'scale(1)',
-            transition: 'transform 0.3s cubic-bezier(.34,1.56,.64,1)',
+            boxShadow:
+              pet.form === 'awakened'
+                ? `0 0 24px ${cssColor}, inset 0 0 14px rgba(255,255,255,0.35), inset 0 -4px 8px rgba(0,0,0,0.25)`
+                : `inset 0 1px 6px rgba(255,255,255,0.3), inset 0 -3px 6px rgba(0,0,0,0.2)`,
+            borderColor: pet.form === 'awakened' ? `${cssColor}` : 'rgba(255,255,255,0.2)',
+            transform: s.action === 'jump' ? 'translateY(-14px) scale(1.18)' : s.action === 'yawn' ? 'scale(0.93)' : 'scale(1)',
+            transition: 'transform 0.3s cubic-bezier(.34,1.56,.64,1), box-shadow 0.5s ease',
+            animation: 'petIdleBob 3s ease-in-out infinite',
           }}
         >
-          <span className="text-4xl" style={{ fontSize: `${28 * pet.sizeScale}px` }}>{pet.speciesEmoji}</span>
+          <span className="text-4xl drop-shadow-lg" style={{ fontSize: `${30 * pet.sizeScale}px` }}>{pet.speciesEmoji}</span>
         </div>
+        {/* v3.0 尾巴/耳朵 accessory（右上角） */}
+        {accessoryEmoji && (
+          <div
+            className="pointer-events-none absolute -right-1 -top-1 flex h-6 w-6 items-center justify-center rounded-full text-base ring-2 ring-white/30"
+            style={{
+              background: pet.form === 'awakened'
+                ? `linear-gradient(135deg, ${cssColor}, #fff5)`
+                : 'rgba(0,0,0,0.55)',
+              boxShadow: `0 0 10px ${cssColor}88`,
+              animation: 'petAccessorySpin 4s linear infinite',
+            }}
+          >
+            {accessoryEmoji}
+          </div>
+        )}
         {/* 装扮 overlay（v0.5） */}
         {(pet as any).outfit && (
           <div
@@ -277,6 +325,22 @@ export function Pet() {
       >
         🍖
       </button>
+
+      {/* v3.0 动画 keyframes */}
+      <style>{`
+        @keyframes petGlowPulse {
+          0%, 100% { opacity: 0.45; transform: scale(0.95); }
+          50%      { opacity: 0.85; transform: scale(1.1); }
+        }
+        @keyframes petIdleBob {
+          0%, 100% { translate: 0 0; }
+          50%      { translate: 0 -2px; }
+        }
+        @keyframes petAccessorySpin {
+          0%   { rotate: 0deg; }
+          100% { rotate: 360deg; }
+        }
+      `}</style>
     </div>
   )
 }

@@ -3,6 +3,7 @@
  * - 监听 gameStore.currentAchievement
  * - 自动从队列中取出第一个、播放撒花
  * - 用户关闭后从队列中取下一个
+ * - v3.1 队列 ≥2 时显示"📋 收下全部 (N)"汇总按钮
  */
 import { useEffect } from 'react'
 import gsap from 'gsap'
@@ -15,6 +16,7 @@ export function AchievementUnlockModal() {
   const current = useGameStore(s => s.currentAchievement)
   const dismiss = useGameStore(s => s.dismissCurrentAchievement)
   const queueLen = useGameStore(s => s.pendingAchievements.length)
+  const clearAll = useGameStore(s => s.clearAchievementQueue)
   const burstConfetti = useUiStore(s => s.burstConfetti)
 
   useEffect(() => {
@@ -31,6 +33,7 @@ export function AchievementUnlockModal() {
   if (!current) return null
 
   const meta = CATEGORY_LABELS[current.category]
+  const totalCount = queueLen + 1  // 当前 + 队列
 
   return (
     <div
@@ -50,6 +53,16 @@ export function AchievementUnlockModal() {
         <div className="absolute -top-1 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-gold-500 px-3 py-1 text-[10px] font-bold text-ink-900">
           🏆 成就达成
         </div>
+
+        {/* v3.1 多成就 chip 顶标 */}
+        {totalCount > 1 && (
+          <div
+            className="absolute right-3 top-3 rounded-full bg-gold-500/25 px-2.5 py-0.5 text-[10px] font-extrabold text-gold-200 ring-1 ring-gold-400/40"
+            title="一次性解锁多个成就"
+          >
+            ✨ ×{totalCount}
+          </div>
+        )}
 
         {/* 大图标 */}
         <div
@@ -81,7 +94,7 @@ export function AchievementUnlockModal() {
 
         {/* 队列提示 */}
         {queueLen > 0 && (
-          <div className="mt-2 text-[10px] text-white/40">
+          <div className="mt-3 text-[10px] text-white/40">
             还有 {queueLen} 个成就等待领奖 →
           </div>
         )}
@@ -94,6 +107,20 @@ export function AchievementUnlockModal() {
         >
           {queueLen > 0 ? '下一个' : '收下奖励'}
         </button>
+
+        {/* v3.1 一键收下全部（队列≥2 才显示） */}
+        {queueLen >= 2 && (
+          <button
+            onClick={() => {
+              sfx.achievement()
+              clearAll()
+            }}
+            className="touch-target mt-2 w-full rounded-full bg-gradient-to-r from-gold-500 to-amber-500 py-2 text-xs font-extrabold text-ink-900 active:scale-95"
+            style={{ boxShadow: '0 0 14px rgba(251,191,36,0.45)' }}
+          >
+            📋 一键收下全部 ({totalCount} 个)
+          </button>
+        )}
       </div>
     </div>
   )

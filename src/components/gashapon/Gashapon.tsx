@@ -82,16 +82,22 @@ export function Gashapon({ onPulled }: GashaponProps) {
     }
     await new Promise(r => setTimeout(r, 500))
     sfx.coin()
-    // 3. 出蛋（限定蛋 → 不同动画）
+    // 3. 出蛋（限定蛋 → v3.1 慢动作 1.5s：晃动 → 悬停 → 旋转爆开）
     if (eggRef.current) {
       const eggEl = eggRef.current
       gsap.set(eggEl, { y: -50, opacity: 0, scale: 0.5 })
-      gsap.to(eggEl, { y: 0, opacity: 1, scale: 1, duration: 0.3, ease: 'back.out(2)' })
-      await new Promise(r => setTimeout(r, 350))
-      // 裂开
+      // 3a 弹出
+      gsap.to(eggEl, { y: 0, opacity: 1, scale: 1.1, duration: 0.5, ease: 'back.out(2.2)' })
+      await new Promise(r => setTimeout(r, 400))
+      // 3b 摇晃蓄力
+      gsap.to(eggEl, { x: -8, duration: 0.06, repeat: 5, yoyo: true, ease: 'sine.inOut' })
       sfx.crack()
-      gsap.to(eggEl, { rotation: 360, scale: 1.1, duration: 0.2, yoyo: true, repeat: 1 })
-      await new Promise(r => setTimeout(r, 250))
+      await new Promise(r => setTimeout(r, 350))
+      // 3c 旋转+放大爆开
+      gsap.to(eggEl, { rotation: 540, scale: 1.3, duration: 0.45, ease: 'power3.out' })
+      await new Promise(r => setTimeout(r, 300))
+      gsap.to(eggEl, { scale: 0.6, opacity: 0, duration: 0.2, ease: 'power2.in' })
+      await new Promise(r => setTimeout(r, 200))
     }
 
     // 4. 真正合成
@@ -199,7 +205,7 @@ export function Gashapon({ onPulled }: GashaponProps) {
             }}
           />
 
-          {/* 蛋（v1.2 蛋壳内部含主题 emoji 水印） */}
+          {/* 蛋（v3.1 3D 蛋壳 + 限定蛋水印） */}
           <div
             ref={eggRef}
             className={`pointer-events-none absolute left-1/2 top-[178px] z-10 -translate-x-1/2 ${currentEgg ? 'egg-shimmer' : ''}`}
@@ -208,27 +214,65 @@ export function Gashapon({ onPulled }: GashaponProps) {
               filter: `drop-shadow(0 0 12px ${currentEgg.shellColors[1]})`,
             } : { fontSize: '30px' }}
           >
+            {/* v3.1 3D 蛋壳背景（限定蛋：彩色；普通：米白） */}
+            <div
+              className="absolute inset-0 -z-10 rounded-full"
+              style={{
+                background: currentEgg
+                  ? `radial-gradient(circle at 30% 28%, ${currentEgg.shellColors[0]}, ${currentEgg.shellColors[1]} 45%, ${currentEgg.shellColors[2]} 100%)`
+                  : 'radial-gradient(circle at 30% 25%, #fff5e0 0%, #ffe7b8 45%, #d4a574 100%)',
+                boxShadow: currentEgg
+                  ? `inset 0 -4px 8px rgba(0,0,0,0.3), inset 0 2px 4px rgba(255,255,255,0.5), 0 4px 16px ${currentEgg.shellColors[1]}88`
+                  : 'inset 0 -4px 8px rgba(0,0,0,0.18), inset 0 2px 4px rgba(255,255,255,0.5), 0 4px 12px rgba(0,0,0,0.3)',
+                transform: 'scale(1.25)',
+              }}
+            />
+            {/* 蛋顶高光 */}
+            <div
+              className="pointer-events-none absolute rounded-full"
+              style={{
+                left: '20%',
+                top: '12%',
+                width: '24%',
+                height: '18%',
+                background: 'radial-gradient(ellipse, rgba(255,255,255,0.7), transparent)',
+                filter: 'blur(2px)',
+              }}
+            />
             {currentEgg ? currentEgg.emoji : '🥚'}
-            {/* v1.2 蛋壳内部主题 emoji 水印 */}
+            {/* v3.1 蛋壳内部主题 emoji 水印（更小更精致） */}
             {currentEgg && (
               <span
-                className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-base opacity-50"
-                style={{ filter: 'blur(0.4px)' }}
+                className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-xs opacity-60"
+                style={{ filter: 'blur(0.3px)', textShadow: '0 0 4px rgba(255,255,255,0.4)' }}
               >
                 {zone.icon}
               </span>
             )}
           </div>
+          {/* v3.1 限定蛋稀有徽章 + 多彩光晕 */}
           {currentEgg && (
-            <div
-              className="pointer-events-none absolute left-1/2 top-[228px] z-10 -translate-x-1/2 whitespace-nowrap rounded-full px-2 py-0.5 text-[8px] font-bold tracking-wider text-white"
-              style={{
-                background: `linear-gradient(90deg, ${currentEgg.shellColors[0]}, ${currentEgg.shellColors[2]})`,
-                boxShadow: `0 0 12px ${currentEgg.shellColors[1]}88`,
-              }}
-            >
-              {currentEgg.label}
-            </div>
+            <>
+              <div
+                className="pointer-events-none absolute left-1/2 top-[165px] z-10 -translate-x-1/2 whitespace-nowrap rounded-full px-2.5 py-0.5 text-[9px] font-extrabold tracking-wider text-white ring-1"
+                style={{
+                  background: `linear-gradient(90deg, ${currentEgg.shellColors[0]}, ${currentEgg.shellColors[2]})`,
+                  boxShadow: `0 0 14px ${currentEgg.shellColors[1]}cc, inset 0 1px 2px rgba(255,255,255,0.3)`,
+                  borderColor: `${currentEgg.shellColors[1]}`,
+                  animation: 'eggLabelShimmer 1.5s ease-in-out infinite',
+                }}
+              >
+                {currentEgg.rarity === 'legend' ? '👑 传说' : currentEgg.rarity === 'epic' ? '💜 史诗' : currentEgg.rarity === 'rare' ? '💙 稀有' : '✨ 限定'} · {currentEgg.label}
+              </div>
+              <div
+                className="pointer-events-none absolute left-1/2 top-[200px] z-0 h-16 w-16 -translate-x-1/2 rounded-full"
+                style={{
+                  background: `radial-gradient(circle, ${currentEgg.shellColors[1]}, transparent 70%)`,
+                  filter: 'blur(10px)',
+                  animation: 'eggAuraPulse 1.2s ease-in-out infinite',
+                }}
+              />
+            </>
           )}
 
           {/* 品牌 */}
@@ -278,6 +322,18 @@ export function Gashapon({ onPulled }: GashaponProps) {
       <div className="mt-2 text-[10px] text-white/30">
         累计 {totalPulls} 抽 · 宠物 Lv.{petLevel} 加成高等级概率
       </div>
+
+      {/* v3.1 蛋壳 keyframes */}
+      <style>{`
+        @keyframes eggLabelShimmer {
+          0%, 100% { transform: translateX(-50%) scale(1); filter: brightness(1); }
+          50%      { transform: translateX(-50%) scale(1.06); filter: brightness(1.3); }
+        }
+        @keyframes eggAuraPulse {
+          0%, 100% { opacity: 0.4; transform: translateX(-50%) scale(0.9); }
+          50%      { opacity: 0.85; transform: translateX(-50%) scale(1.2); }
+        }
+      `}</style>
     </div>
   )
 }

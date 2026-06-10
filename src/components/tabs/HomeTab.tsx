@@ -8,10 +8,18 @@ import { WorldRing } from '@/components/ui/WorldRing'
 import { CoinDisplay } from '@/components/ui/CoinDisplay'
 import { useGameStore } from '@/store/gameStore'
 import { useUiStore } from '@/store/uiStore'
-import { ZONES, MAX_LEVEL, type ZoneId } from '@/data/emoji-trees'
+import { ZONES, MAX_LEVEL, type ZoneId, ZONE_LIST } from '@/data/emoji-trees'
 import { computeBuff, seasonEmoji, seasonLabel } from '@/lib/season'
 import { hasCheckedInToday } from '@/lib/checkin'
 import { isWeekendDouble } from '@/lib/weekend'
+
+// v3.2 抽卡累计徽章阶梯
+const PULL_MILESTONES = [
+  { count: 10,  emoji: '🎯', label: '新手',    color: '#86efac' },
+  { count: 50,  emoji: '🎲', label: '熟手',    color: '#67e8f9' },
+  { count: 100, emoji: '🎰', label: '高手',    color: '#fbbf24' },
+  { count: 500, emoji: '👑', label: '扭蛋王',  color: '#f472b6' },
+]
 
 export function HomeTab() {
   const coins = useGameStore(s => s.coins)
@@ -108,6 +116,9 @@ export function HomeTab() {
           <span className="rounded-full bg-white/[0.04] px-1.5 py-0.5 text-white/40">5% 暴击</span>
         )}
       </div>
+
+      {/* v3.2 创意：今日宜合 + 抽卡徽章进度 */}
+      <DailyFortune totalPulls={totalPulls} currentZone={currentZone} />
 
       {/* 当前主题卡片 + 切换入口 */}
       <button
@@ -336,6 +347,105 @@ function ZoneSuggestion({ zoneMax, onPick }: { zoneMax: Record<ZoneId, number>; 
           去合成
         </button>
       </div>
+    </div>
+  )
+}
+
+/**
+ * v3.2 创意：🔮 今日宜合 + 抽卡徽章阶梯
+ * - 每日种子选主题卦象
+ * - 抽卡累计 4 档徽章（10/50/100/500），每档解锁后灰显
+ */
+function DailyFortune({ totalPulls, currentZone }: { totalPulls: number; currentZone: ZoneId }) {
+  const setZone = useGameStore(s => s.setZone)
+  const setGuide = useUiStore(s => s.setGuide)
+
+  // 每日种子：day-of-year % zone count
+  const now = new Date()
+  const dayOfYear = Math.floor((now.getTime() - new Date(now.getFullYear(), 0, 0).getTime()) / 86400000)
+  const fortuneIdx = dayOfYear % ZONE_LIST.length
+  const fortuneZone = ZONE_LIST[fortuneIdx]
+  const fortuneZ = fortuneZone ? ZONES[fortuneZone.id] : null
+  if (!fortuneZ) return null
+  const isCurrent = fortuneZone.id === currentZone
+  const nextMilestone = PULL_MILESTONES.find(m => totalPulls < m.count)
+  const nextIdx = PULL_MILESTONES.findIndex(m => totalPulls < m.count)
+  const progressPct = nextMilestone
+    ? Math.min(100, ((totalPulls - (PULL_MILESTONES[nextIdx - 1]?.count ?? 0)) / (nextMilestone.count - (PULL_MILESTONES[nextIdx - 1]?.count ?? 0))) * 100)
+    : 100
+
+  return (
+    <div
+      className="flex w-full max-w-[400px] flex-col gap-1.5 rounded-2xl px-2.5 py-2 text-[10px]"
+      style={{
+        background: 'linear-gradient(90deg, rgba(167,139,250,0.12), rgba(96,165,250,0.12))',
+        border: '1px solid rgba(167,139,250,0.25)',
+      }}
+    >
+      <div className="flex items-center gap-1.5">
+        <span className="text-[11px]">🔮</span>
+        <span className="text-white/60">今日宜合</span>
+        <span
+          className="rounded-full px-1.5 py-0.5 font-bold"
+          style={{ background: `${fortuneZ.color}30`, color: fortuneZ.color }}
+        >
+          {fortuneZ.icon} {fortuneZ.name}
+        </span>
+        {isCurrent && (
+          <span className="rounded-full bg-emerald-500/25 px-1.5 py-0.5 text-emerald-300">当前</span>
+        )}
+        {!isCurrent && (
+          <button
+            onClick={() => {
+              setZone(fortuneZone.id)
+              setGuide(`🔮 切换到 ${fortuneZ.name}，今日宜合`)
+            }}
+            className="rounded-full bg-white/10 px-2 py-0.5 text-[9px] text-white/70 active:scale-95"
+          >
+            切换
+          </button>
+        )}
+      </div>
+      {/* 抽卡徽章进度 */}
+      <div className="flex items-center gap-1">
+        {PULL_MILESTONES.map((m, i) => {
+          const reached = totalPulls >= m.count
+          return (
+            <div key={m.count} className="flex items-center gap-0.5">
+              <span
+                className={`flex h-5 w-5 items-center justify-center rounded-full text-[11px] ring-1 ${reached ? '' : 'grayscale opacity-40'}`}
+                style={{
+                  background: reached ? `${m.color}33` : 'rgba(255,255,255,0.05)',
+                  borderColor: reached ? m.color : 'rgba(255,255,255,0.1)',
+                  boxShadow: reached ? `0 0 8px ${m.color}88` : 'none',
+                }}
+                title={`${m.label} · ${m.count} 抽`}
+              >
+                {m.emoji}
+              </span>
+              {i < PULL_MILESTONES.length - 1 && <span className="text-[8px] text-white/20">·</span>}
+            </div>
+          )
+        })}
+        {nextMilestone ? (
+          <span className="ml-auto text-[9px] text-white/40">
+            {totalPulls}/{nextMilestone.count} 抽 → {nextMilestone.emoji} {nextMilestone.label}
+          </span>
+        ) : (
+          <span className="ml-auto text-[9px] text-pink-300 font-bold">👑 全部达成！</span>
+        )}
+      </div>
+      {nextMilestone && (
+        <div className="h-1 overflow-hidden rounded-full bg-white/5">
+          <div
+            className="h-full transition-all"
+            style={{
+              width: `${progressPct}%`,
+              background: `linear-gradient(90deg, ${nextMilestone.color}, #fff)`,
+            }}
+          />
+        </div>
+      )}
     </div>
   )
 }
