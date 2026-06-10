@@ -9,6 +9,8 @@ import { ZONES, GRID_SIZE, MAX_LEVEL, ZONE_LIST } from '@/data/emoji-trees'
 import { rng, nextId } from './rng'
 import type { EventKind } from './event-rewards'
 
+export type Dir = 'up' | 'down' | 'left' | 'right'
+
 export interface Tile {
   id: string
   zone: ZoneId
@@ -31,7 +33,48 @@ export const findEmptyCells = (g: Grid): Array<[number, number]> => {
   return out
 }
 
-export const isFull = (g: Grid): boolean => findEmptyCells(g).length === 0
+export const isFull = (grid: Grid): boolean => {
+  for (let r = 0; r < GRID_SIZE; r++) {
+    for (let c = 0; c < GRID_SIZE; c++) {
+      if (grid[r]?.[c] === null) return false
+    }
+  }
+  return true
+}
+
+/**
+ * v2.0 死局检测：4 个方向任一有 moves 或 events 即返回 true
+ * - 满格 + 死局 = 卡死（玩家无法继续 slide）
+ */
+export const canAnyMove = (grid: Grid): boolean => {
+  const dirs: Dir[] = ['up', 'down', 'left', 'right']
+  for (const d of dirs) {
+    const r = slide(grid, d)
+    if (r.moves.length > 0 || r.events.length > 0) return true
+  }
+  return false
+}
+
+/**
+ * v2.0 死局兜底：保留 Lv.4+ 的 tile，把所有 Lv.1-3 清空，并奖励 50 币
+ * - 返回新 grid + 被清掉的 tile 数
+ */
+export const deadlockRelief = (grid: Grid): { grid: Grid; cleared: number; kept: number } => {
+  let cleared = 0
+  let kept = 0
+  const newGrid: Grid = grid.map(row =>
+    row.map(cell => {
+      if (cell === null) return null
+      if (cell.level <= 3) {
+        cleared++
+        return null
+      }
+      kept++
+      return cell
+    })
+  )
+  return { grid: newGrid, cleared, kept }
+}
 
 export const drawCapsule = (zone: ZoneId, petLevelBoost = 0): Tile => {
   const r = rng()
@@ -159,7 +202,7 @@ export interface SlideResult {
   moved: boolean
 }
 
-type Dir = 'up' | 'down' | 'left' | 'right'
+type DirLocal = 'up' | 'down' | 'left' | 'right'
 
 /**
  * 滑动一行/列：

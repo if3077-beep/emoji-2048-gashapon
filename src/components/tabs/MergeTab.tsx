@@ -1,9 +1,10 @@
 /**
- * 合成 Tab：专注 4×4 网格 + 拖拽 + 历史 + v1.2 quick pull
+ * 合成 Tab：专注 4×4 网格 + 拖拽 + 历史 + v1.2 quick pull + v2.0 死局
  */
 import { useState } from 'react'
 import { MergeGrid } from '@/components/grid/MergeGrid'
 import { Gashapon } from '@/components/gashapon/Gashapon'
+import { DeadlockPanel } from '@/components/ui/DeadlockPanel'
 import { useGameStore } from '@/store/gameStore'
 import { ZONES, MAX_LEVEL } from '@/data/emoji-trees'
 
@@ -30,6 +31,9 @@ export function MergeTab() {
         <Stat label="累计抽数" value={totalPulls} />
         <Stat label="最高 Lv." value={maxLevel} />
       </div>
+
+      {/* v2.0 死局提示卡 */}
+      <DeadlockPanel />
 
       {/* v1.2 主题进度 + 快捷抽卡 */}
       <div

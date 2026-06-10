@@ -19,6 +19,9 @@ import {
   type SlideResult,
   type MoveRecord,
   type MergeEvent,
+  isFull,
+  canAnyMove,
+  deadlockRelief,
 } from '@/lib/merge-engine'
 import { autoMerge as autoMergeEngine } from '@/lib/auto-merge'
 import { generatePet, feedPet, petPet, computeForm, type Pet, type PetForm } from '@/lib/pet-gen'
@@ -103,6 +106,9 @@ interface GameState {
   pendingAchievements: Achievement[]
   /** 当前展示的成就 */
   currentAchievement: Achievement | null
+  // v2.0 死局
+  /** 是否进入卡死（满格 + 4 方向无任何合成） */
+  isDeadlocked: boolean
 
   // 操作
   pull: (multi?: number) => void
@@ -144,6 +150,15 @@ interface GameState {
   dismissCurrentAchievement: () => void
   /** 清空成就队列 */
   clearAchievementQueue: () => void
+  // v2.0 死局与 spawn
+  /** v2.0：尝试在网格中放一个新 tile（如果有空位） */
+  trySpawnOne: () => boolean
+  /** v2.0：死局检测（满格 + 无任何合成） */
+  checkDeadlock: () => boolean
+  /** v2.0：死局兜底（清 Lv.1-3，保留 Lv.4+，奖 50 🪙） */
+  resolveDeadlock: () => { cleared: number; kept: number } | null
+  /** v2.0：清死局状态 */
+  clearDeadlock: () => void
 }
 
 const todayKey = (): string => {
@@ -191,9 +206,10 @@ const init = () => {
       // v1.1 成就
       unlockedAchievements: saved.unlockedAchievements ?? [],
       pendingAchievements: [],
-      currentAchievement: null,
-    }
+    currentAchievement: null,
+    isDeadlocked: false,
   }
+}
   return {
     coins: 10,
     totalPulls: 0,
@@ -232,6 +248,8 @@ const init = () => {
     unlockedAchievements: [],
     pendingAchievements: [],
     currentAchievement: null,
+    // v2.0 死局
+    isDeadlocked: false,
   }
 }
 
@@ -405,6 +423,11 @@ export const useGameStore = create<GameState>((set, get) => ({
     }
     set(updates)
     get().updateTasks(t => t.desc.includes('合成'), 1)
+
+    // v2.0：slide 后自动 spawn 1 个新 tile（修"slide 后不生成胶囊"卡死 bug）
+    get().trySpawnOne()
+    // v2.0：每次 slide 后检测死局
+    get().checkDeadlock()
 
     // v0.7：合并后尝试触发随机事件
     if (result.events.length > 0) {
@@ -731,6 +754,58 @@ export const useGameStore = create<GameState>((set, get) => ({
   },
 
   clearAchievementQueue: () => set({ pendingAchievements: [], currentAchievement: null }),
+
+  // v2.0 死局与 spawn
+  /**
+   * 尝试在网格中放一个新 tile（如果有空位）
+   * - 返回 true 表示成功 spawn
+   * - 经典 2048 行为：每次 slide 后都会 spawn 1 个新胶囊
+   */
+  trySpawnOne: () => {
+    const state = get()
+    if (isFull(state.grid)) return false
+    const cap = drawCapsule(state.currentZone, state.pet?.level ?? 0)
+    const result = placeCapsule(state.grid, cap)
+    set({ grid: result.grid })
+    return true
+  },
+
+  /**
+   * 死局检测：满格 + 4 方向无任何可合成
+   * - 同步设置 isDeadlocked
+   * - 玩家可在 UI 上一键清 Lv.1-3 兜底
+   */
+  checkDeadlock: () => {
+    const state = get()
+    if (!isFull(state.grid)) {
+      if (state.isDeadlocked) set({ isDeadlocked: false })
+      return false
+    }
+    const dead = !canAnyMove(state.grid)
+    if (dead !== state.isDeadlocked) set({ isDeadlocked: dead })
+    return dead
+  },
+
+  /**
+   * 死局兜底：清 Lv.1-3，保留 Lv.4+，奖励 50 🪙
+   * - 返回被清掉的 tile 数
+   */
+  resolveDeadlock: () => {
+    const state = get()
+    if (!state.isDeadlocked) return null
+    const r = deadlockRelief(state.grid)
+    const reward = Math.max(20, r.cleared * 8)
+    set({
+      grid: r.grid,
+      coins: state.coins + reward,
+      isDeadlocked: false,
+    })
+    // 兜底后再 spawn 1 个
+    get().trySpawnOne()
+    return { cleared: r.cleared, kept: r.kept, reward }
+  },
+
+  clearDeadlock: () => set({ isDeadlocked: false }),
 
   reset: () => {
     set(init())
