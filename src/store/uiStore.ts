@@ -81,6 +81,9 @@ interface UiState {
   // v11.1 收藏 zone（玩家手动星标）
   favoriteZones: ZoneId[]
   toggleFavorite: (z: ZoneId) => void
+  // v12.1 设置抽屉
+  settingsOpen: boolean
+  setSettingsOpen: (v: boolean) => void
 }
 
 let _toastId = 0
@@ -186,4 +189,7 @@ export const useUiStore = create<UiState>((set) => ({
   toggleFavorite: (z: ZoneId) => set(s => ({
     favoriteZones: s.favoriteZones.includes(z) ? s.favoriteZones.filter(x => x !== z) : [...s.favoriteZones, z],
   })),
+  // v12.1 设置抽屉
+  settingsOpen: false,
+  setSettingsOpen: (v) => set({ settingsOpen: v }),
 }))

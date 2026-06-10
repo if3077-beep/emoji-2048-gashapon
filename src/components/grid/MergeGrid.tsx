@@ -16,8 +16,7 @@ import { Dpad } from './Dpad'
 import { detectMatch3, findLongestMatch } from '@/lib/auto-merge'
 import {
   AURORA, TRAIL_GRADIENT, BEAM_HStyle, BEAM_VStyle, zoneColor, zoneGlow,
-  startBallInner, startBallShadow, rippleRing,
-  cellFlash, mergeFloatShadow, flyTextColor, dropShadow,
+  rippleRing, cellFlash, mergeFloatShadow, flyTextColor, dropShadow,
 } from '@/lib/effects'
 
 const TIER_CLASS = ['tier-common', 'tier-rare', 'tier-epic', 'tier-legend']
@@ -119,19 +118,24 @@ export function MergeGrid() {
         })
       })
 
-      // 2) 起点光球：紫青弱光晕（v10.0 缩小）
+      // 2) v12.0 起点位置小三角箭头（紫青 8px，0.3s 渐显 + 0.2s 渐隐；替代 v10.0 起点光球）
       if (start) {
         const startX = (start[1] + 0.5) * cellW + 12
         const startY = (start[0] + 0.5) * cellH + 12
-        const ball = document.createElement('div')
-        ball.className = 'pointer-events-none absolute z-30'
-        ball.style.cssText = `left:0;top:0;width:${cellW}px;height:${cellH}px;transform:translate(${startX - cellW / 2}px,${startY - cellH / 2}px);`
-        const inner = document.createElement('div')
-        inner.style.cssText = `width:100%;height:100%;border-radius:50%;background:${startBallInner};box-shadow:${startBallShadow};`
-        ball.appendChild(inner)
-        grid.appendChild(ball)
-        gsap.fromTo(ball, { scale: 0, opacity: 0 }, { scale: 0.6, opacity: 1, duration: 0.15, ease: 'power2.out' })
-        gsap.to(ball, { scale: 0.2, opacity: 0, duration: 0.4, delay: 0.15, ease: 'power2.in', onComplete: () => ball.remove() })
+        const tri = document.createElement('div')
+        tri.className = 'pointer-events-none absolute z-30'
+        tri.style.cssText = `left:0;top:0;width:${cellW}px;height:${cellH}px;transform:translate(${startX - cellW / 2}px,${startY - cellH / 2}px);display:flex;align-items:center;justify-content:center;`
+        // 紫青三角：8px 边长，CSS border triangle
+        const dirArrow = isHorizontal
+          ? (dir === 'right' ? 'border-left: 8px solid ' + AURORA.cyan : 'border-right: 8px solid ' + AURORA.cyan)
+          : (dir === 'down' ? 'border-top: 8px solid ' + AURORA.cyan : 'border-bottom: 8px solid ' + AURORA.cyan)
+        const baseBorder = isHorizontal
+          ? (dir === 'right' ? 'border-top: 6px solid transparent; border-bottom: 6px solid transparent;' : 'border-top: 6px solid transparent; border-bottom: 6px solid transparent;')
+          : (dir === 'down' ? 'border-left: 6px solid transparent; border-right: 6px solid transparent;' : 'border-left: 6px solid transparent; border-right: 6px solid transparent;')
+        tri.innerHTML = `<div style="width:0;height:0;${baseBorder}${dirArrow};filter:drop-shadow(0 0 4px ${AURORA.cyan}cc);"></div>`
+        grid.appendChild(tri)
+        gsap.fromTo(tri, { opacity: 0, scale: 0.5 }, { opacity: 1, scale: 1, duration: 0.3, ease: 'power2.out' })
+        gsap.to(tri, { opacity: 0, scale: 0.6, duration: 0.2, delay: 0.3, ease: 'power2.in', onComplete: () => tri.remove() })
       }
 
       // 3) 流光带（v10.0 改 2px 细线 + 4/8px 弱光晕）

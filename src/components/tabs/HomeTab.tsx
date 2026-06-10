@@ -1,13 +1,14 @@
 /**
  * 主页 Tab（v0.3：季节buff + 主线任务条 + v0.4 签到/挑战/统计入口 + v0.6 周末双倍）
  */
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Gashapon } from '@/components/gashapon/Gashapon'
 import { MergeGrid } from '@/components/grid/MergeGrid'
 import { AutoMergeButton } from '@/components/ui/AutoMergeButton'
 import { WorldRing } from '@/components/ui/WorldRing'
 import { CoinDisplay } from '@/components/ui/CoinDisplay'
 import { DeadlockPanel } from '@/components/ui/DeadlockPanel'
+import { SettingsDrawer } from '@/components/ui/SettingsDrawer'
 import { useGameStore } from '@/store/gameStore'
 import { useUiStore } from '@/store/uiStore'
 import { ZONES, MAX_LEVEL, type ZoneId, ZONE_LIST } from '@/data/emoji-trees'
@@ -37,9 +38,7 @@ export function HomeTab() {
   const challenges = useGameStore(s => s.challenges)
 
   const openZoneGallery = useUiStore(s => s.openZoneGallery)
-  const openCheckin = useUiStore(s => s.openCheckin)
-  const refreshGrid = useGameStore(s => s.refreshGrid)
-  const openStats = useUiStore(s => s.openStats)
+  const setSettingsOpen = useUiStore(s => s.setSettingsOpen)
   const setTab = useUiStore(s => s.setTab)
 
   const zone = ZONES[currentZone]
@@ -54,52 +53,19 @@ export function HomeTab() {
 
   return (
     <div className="flex w-full flex-col items-center gap-1 px-3 py-1">
-      {/* v9.1 上方堆叠彻底解决：货币条 2 chip + 签到 + 刷新 */}
-      <div className="flex w-full max-w-[400px] items-center gap-1">
-        <div className="glass flex flex-1 items-center gap-1 rounded-full px-2 py-1">
+      {/* v12.1 顶部 0 堆叠：1 货币 + 1 设置（其他入口全部收入 SettingsDrawer） */}
+      <div className="flex w-full max-w-[400px] items-center gap-1.5">
+        <div className="glass flex flex-1 items-center gap-1.5 rounded-full px-3 py-1.5">
           <span className="text-sm">🪙</span>
-          <CoinDisplay value={coins} bumpKey={coins} className="text-xs font-bold" />
-        </div>
-        <div className="glass flex items-center gap-0.5 rounded-full px-1.5 py-1" title="最高等级">
-          <span className="text-[9px]">👑</span>
-          <span className="font-mono text-[9px] font-bold text-ember-400">Lv.{maxLevel}</span>
+          <CoinDisplay value={coins} bumpKey={coins} className="text-sm font-bold" />
         </div>
         <button
-          onClick={openCheckin}
-          className="glass relative flex items-center gap-0.5 rounded-full px-1.5 py-1 active:scale-95"
-          style={{ background: checkedToday ? 'rgba(34,197,94,0.2)' : 'rgba(251,191,36,0.15)' }}
-          title="签到"
-        >
-          <span className="text-xs">🎁</span>
-          <span className="font-mono text-[9px] font-bold" style={{ color: checkedToday ? '#86efac' : '#fbbf24' }}>
-            {checkin.streak}/7
-          </span>
-          {!checkedToday && (
-            <span className="absolute -right-0.5 -top-0.5 h-1.5 w-1.5 animate-pulse rounded-full bg-red-500" />
-          )}
-        </button>
-        <button
-          onClick={() => {
-            // v9.0 主动刷新：5🪙 保留 Lv.4+
-            if (coins < 5) {
-              useUiStore.getState().pushToast('🪙 扭蛋币不足', '🪙', 0)
-              return
-            }
-            refreshGrid(5)
-          }}
-          className="glass flex items-center gap-0.5 rounded-full px-1.5 py-1 active:scale-95"
+          onClick={() => setSettingsOpen(true)}
+          className="glass flex items-center gap-1 rounded-full px-3 py-1.5 active:scale-95"
           style={{ background: 'rgba(167,139,250,0.15)' }}
-          title="刷新网格（5🪙 保留 Lv.4+）"
+          title="设置（签到 / 主题馆 / 统计 / 刷新 / 静音）"
         >
-          <span className="text-xs">🔄</span>
-          <span className="font-mono text-[9px] font-bold text-violet-200">5</span>
-        </button>
-        <button
-          onClick={openStats}
-          className="glass flex items-center gap-0.5 rounded-full px-1.5 py-1 active:scale-95"
-          title="统计"
-        >
-          <span className="text-xs">📊</span>
+          <span className="text-sm">⚙️</span>
         </button>
       </div>
 
@@ -109,10 +75,10 @@ export function HomeTab() {
       {/* v3.2 创意：今日宜合 + 抽卡徽章进度（v8.1 紧凑化） */}
       <DailyFortune totalPulls={totalPulls} currentZone={currentZone} />
 
-      {/* 当前主题卡片 + 切换入口（v6.3 紧凑化） */}
+      {/* 当前主题卡片 + 切换入口（v6.3 紧凑化 + v12.1 右上角加 Lv.X） */}
       <button
         onClick={openZoneGallery}
-        className="touch-target flex w-full max-w-[400px] items-center gap-2 rounded-2xl p-2 text-left transition-all active:scale-[0.99]"
+        className="touch-target relative flex w-full max-w-[400px] items-center gap-2 rounded-2xl p-2 text-left transition-all active:scale-[0.99]"
         style={{
           background: zone.bg,
           border: `1px solid ${zone.color}55`,
@@ -137,6 +103,15 @@ export function HomeTab() {
             <span className="text-white/20">·</span>
             <span>{clearedCount}/{totalZones} 通关</span>
           </div>
+        </div>
+        {/* v12.1 把 👑 Lv.X 移到 zone 卡片右上角 */}
+        <div
+          className="flex flex-col items-center gap-0.5 rounded-full px-2 py-0.5"
+          style={{ background: 'rgba(251,191,36,0.15)' }}
+          title="最高等级"
+        >
+          <span className="text-[8px]">👑</span>
+          <span className="font-mono text-[8px] font-bold text-amber-300">Lv.{maxLevel}</span>
         </div>
         <div
           className="flex h-8 w-8 items-center justify-center rounded-full text-base"
@@ -177,6 +152,9 @@ export function HomeTab() {
       <div className="w-full max-w-[400px] text-center text-[10px] text-white/25">
         累计扭蛋 {totalPulls} 次 · 最佳连击 {useGameStore.getState().bestCombo} · 挑战 {challengesDone}/{challenges.length}
       </div>
+
+      {/* v12.1 设置抽屉（顶部 ⚙️ 触发） */}
+      <SettingsDrawer />
     </div>
   )
 }

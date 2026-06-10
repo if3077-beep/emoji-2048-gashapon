@@ -58,9 +58,7 @@ export const dropShadow = (isCrit: boolean, isLucky: boolean) => {
   return AURORA.cyan
 }
 
-/** 起点光球（v10.0 简化：白→青 弱光晕） */
-export const startBallInner = `radial-gradient(circle, ${AURORA.white}ee, ${AURORA.cyan}cc 40%, transparent 100%)`
-export const startBallShadow = `0 0 6px ${AURORA.cyan}aa`
+/** 起点位置已删除：v12.0 改为 8px 紫青三角箭头（CSS border triangle，方向相关）*/
 
 /** 终点爆裂（青粉） */
 export const endBurstInner = `radial-gradient(circle, ${AURORA.white}, ${AURORA.cyan} 40%, transparent 70%)`

@@ -66,6 +66,21 @@ export default function App() {
     }
   }, [pet?.id, loaded, tutorialStep])
 
+  // v12.2 1/2/3 数字键切 tab
+  useEffect(() => {
+    if (!loaded) return
+    const onKey = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement)?.tagName
+      if (['INPUT', 'TEXTAREA'].includes(tag)) return
+      if (e.metaKey || e.ctrlKey || e.altKey) return
+      if (e.key === '1') setTab('home')
+      else if (e.key === '2') setTab('collection')
+      else if (e.key === '3') setTab('more')
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [loaded, setTab])
+
   if (!loaded) {
     return (
       <div className="flex h-full items-center justify-center text-white/40">
