@@ -1,5 +1,5 @@
 /**
- * 扭蛋机：3D 立体感 + GSAP 摇动 + 出蛋动画
+ * 扭蛋机：3D 立体感 + GSAP 摇动 + 出蛋动画（v0.8：限定蛋壳 + 神赐事件）
  */
 import { useRef, useState } from 'react'
 import gsap from 'gsap'
@@ -7,6 +7,9 @@ import { useGameStore } from '@/store/gameStore'
 import { useUiStore } from '@/store/uiStore'
 import { ZONES } from '@/data/emoji-trees'
 import { sfx, resumeAudio } from '@/lib/audio'
+import { rollSpecialEgg, getSpecialEggById, ROLL_DIVINE_BLESSING, DIVINE_MIN_LEVEL, type SpecialEgg } from '@/lib/special-eggs'
+import { nextId, rng } from '@/lib/rng'
+import { placeCapsule } from '@/lib/merge-engine'
 
 interface GashaponProps {
   onPulled?: (count: number) => void
@@ -16,6 +19,8 @@ export function Gashapon({ onPulled }: GashaponProps) {
   const coins = useGameStore(s => s.coins)
   const pull = useGameStore(s => s.pull)
   const currentZone = useGameStore(s => s.currentZone)
+  const grid = useGameStore(s => s.grid)
+  const setGrid = (g: typeof grid) => useGameStore.setState({ grid: g })
   const totalPulls = useGameStore(s => s.totalPulls)
   const advanceTutorial = useGameStore(s => s.advanceTutorial)
   const tutorialStep = useGameStore(s => s.tutorialStep)
@@ -23,6 +28,7 @@ export function Gashapon({ onPulled }: GashaponProps) {
   const pushToast = useUiStore(s => s.pushToast)
   const burstConfetti = useUiStore(s => s.burstConfetti)
   const petLevel = useGameStore(s => s.pet?.level ?? 0)
+  const freeGachaPending = useGameStore(s => s.freeGachaPending)
 
   const zone = ZONES[currentZone]
   const machineRef = useRef<HTMLDivElement>(null)
@@ -32,16 +38,26 @@ export function Gashapon({ onPulled }: GashaponProps) {
   const coinRef = useRef<HTMLDivElement>(null)
   const [busy, setBusy] = useState(false)
   const [previewEmoji, setPreviewEmoji] = useState<string | null>(null)
+  const [currentEgg, setCurrentEgg] = useState<SpecialEgg | null>(null)
 
   const handlePull = async (multi: number) => {
     if (busy) return
-    if (coins < multi) {
+    // v0.7 gacha_frenzy 事件期间免单
+    const isFree = freeGachaPending
+    const cost = isFree ? 0 : multi
+    if (coins < cost) {
       setGuide('扭蛋币不足，去合成一些 emoji 吧！')
       sfx.fail()
       return
     }
+    if (isFree) {
+      useGameStore.setState({ freeGachaPending: false })
+    }
     resumeAudio()
     setBusy(true)
+    // v0.8：抽取限定蛋壳
+    const egg = rollSpecialEgg()
+    setCurrentEgg(egg)
     const m = machineRef.current
     if (!m) {
       setBusy(false)
@@ -66,24 +82,44 @@ export function Gashapon({ onPulled }: GashaponProps) {
     }
     await new Promise(r => setTimeout(r, 500))
     sfx.coin()
-    // 3. 出蛋
+    // 3. 出蛋（限定蛋 → 不同动画）
     if (eggRef.current) {
-      const egg = eggRef.current
-      gsap.set(egg, { y: -50, opacity: 0, scale: 0.5 })
-      gsap.to(egg, { y: 0, opacity: 1, scale: 1, duration: 0.3, ease: 'back.out(2)' })
+      const eggEl = eggRef.current
+      gsap.set(eggEl, { y: -50, opacity: 0, scale: 0.5 })
+      gsap.to(eggEl, { y: 0, opacity: 1, scale: 1, duration: 0.3, ease: 'back.out(2)' })
       await new Promise(r => setTimeout(r, 350))
       // 裂开
       sfx.crack()
-      gsap.to(egg, { rotation: 360, scale: 1.1, duration: 0.2, yoyo: true, repeat: 1 })
+      gsap.to(eggEl, { rotation: 360, scale: 1.1, duration: 0.2, yoyo: true, repeat: 1 })
       await new Promise(r => setTimeout(r, 250))
     }
 
     // 4. 真正合成
+    if (isFree) {
+      useGameStore.setState({ coins: coins })  // 不扣币
+    }
     pull(multi)
     sfx.merge(1)
-    if (multi === 1) pushToast('+1 扭蛋！', '🎰')
-    else pushToast(`十连！+${multi}`, '🎰', 2)
+    if (egg) {
+      pushToast(`✨ ${egg.label}！+${egg.bonusCoins}🪙`, egg.emoji, egg.rarity === 'legend' ? 3 : 2)
+      useGameStore.setState({ coins: useGameStore.getState().coins + egg.bonusCoins })
+      burstConfetti()
+    } else if (multi === 1) {
+      pushToast('+1 扭蛋！', '🎰')
+    } else {
+      pushToast(`十连！+${multi}`, '🎰', 2)
+    }
     if (multi >= 10) burstConfetti()
+
+    // v0.8 神赐事件：8% 概率直接塞 Lv.6 棋子
+    if (rng() < ROLL_DIVINE_BLESSING) {
+      const cap = { id: nextId('tile'), zone: currentZone, level: DIVINE_MIN_LEVEL, bornAt: Date.now() }
+      const result = placeCapsule(useGameStore.getState().grid, cap)
+      setGrid(result.grid)
+      pushToast(`🌟 神赐！+1 Lv.${DIVINE_MIN_LEVEL} 棋子`, '✨', 3)
+      burstConfetti()
+      sfx.celebrate()
+    }
 
     if (tutorialStep === 1) {
       advanceTutorial()
@@ -91,6 +127,7 @@ export function Gashapon({ onPulled }: GashaponProps) {
     }
 
     onPulled?.(multi)
+    setTimeout(() => setCurrentEgg(null), 800)
     setBusy(false)
   }
 
@@ -149,13 +186,28 @@ export function Gashapon({ onPulled }: GashaponProps) {
             }}
           />
 
-          {/* 蛋 */}
+          {/* 蛋（v0.8 限定蛋壳支持） */}
           <div
             ref={eggRef}
-            className="pointer-events-none absolute left-1/2 top-[178px] -translate-x-1/2 text-3xl"
+            className={`pointer-events-none absolute left-1/2 top-[178px] -translate-x-1/2 ${currentEgg ? 'egg-shimmer' : ''}`}
+            style={currentEgg ? {
+              fontSize: '40px',
+              filter: `drop-shadow(0 0 12px ${currentEgg.shellColors[1]})`,
+            } : { fontSize: '30px' }}
           >
-            🥚
+            {currentEgg ? currentEgg.emoji : '🥚'}
           </div>
+          {currentEgg && (
+            <div
+              className="pointer-events-none absolute left-1/2 top-[228px] -translate-x-1/2 whitespace-nowrap rounded-full px-2 py-0.5 text-[8px] font-bold tracking-wider text-white"
+              style={{
+                background: `linear-gradient(90deg, ${currentEgg.shellColors[0]}, ${currentEgg.shellColors[2]})`,
+                boxShadow: `0 0 12px ${currentEgg.shellColors[1]}88`,
+              }}
+            >
+              {currentEgg.label}
+            </div>
+          )}
 
           {/* 品牌 */}
           <div className="absolute bottom-2 left-0 right-0 text-center text-[8px] tracking-[0.2em] text-black/10">

@@ -186,3 +186,23 @@ body,
 .tile-slide-in {
   animation: tileSlideIn 0.35s cubic-bezier(.22,1,.36,1);
 }
+
+/* ===== v0.8 3 连锁动 ===== */
+@keyframes match3Pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(236, 72, 153, 0); transform: scale(1); }
+  50% { box-shadow: 0 0 18px 4px rgba(236, 72, 153, 0.6); transform: scale(1.08); }
+}
+.match3-pulse {
+  animation: match3Pulse 0.8s ease-in-out infinite;
+  outline: 1.5px solid rgba(236, 72, 153, 0.6);
+  outline-offset: -1.5px;
+}
+
+/* ===== v0.9 蛋壳渐变背景 ===== */
+@keyframes eggShimmer {
+  0%, 100% { filter: brightness(1) hue-rotate(0deg); }
+  50% { filter: brightness(1.2) hue-rotate(20deg); }
+}
+.egg-shimmer {
+  animation: eggShimmer 1.4s ease-in-out infinite;
+}

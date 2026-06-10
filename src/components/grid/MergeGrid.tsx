@@ -12,6 +12,8 @@ import { levelToTier, type Grid, type Tile, findZoneMax } from '@/lib/merge-engi
 import { calcReward, getReward, type EventKind } from '@/lib/event-rewards'
 import { useRef, useState, useCallback, useEffect } from 'react'
 import gsap from 'gsap'
+import { Dpad } from './Dpad'
+import { detectMatch3 } from '@/lib/auto-merge'
 
 const TIER_CLASS = ['tier-common', 'tier-rare', 'tier-epic', 'tier-legend']
 
@@ -138,6 +140,9 @@ export function MergeGrid() {
     setSliding({ active: false, startX: 0, startY: 0, startT: 0 })
   }
 
+  // v0.8 3 连锁动：检测到 match3 → 整行整列高亮
+  const match3Lines = detectMatch3(grid)
+
   // 键盘方向键
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -171,13 +176,14 @@ export function MergeGrid() {
           row.map((tile, c) => {
             const tier = tile ? levelToTier(Math.min(tile.level, 11)) : 0
             const isMoving = tile ? animTiles.has(tile.id) : false
+            const isMatch3 = match3Lines.some(line => line.some(([lr, lc]) => lr === r && lc === c))
             return (
               <div
                 key={`${r},${c}`}
                 data-cell={`${r},${c}`}
                 className={`relative flex aspect-square items-center justify-center rounded-xl text-2xl transition-all ${
                   tile ? TIER_CLASS[tier] : 'bg-white/[0.02] ring-1 ring-white/[0.04]'
-                } ${isMoving ? 'tile-slide-in' : ''}`}
+                } ${isMoving ? 'tile-slide-in' : ''} ${isMatch3 ? 'match3-pulse' : ''}`}
                 style={{
                   // 觉醒专属光晕
                   boxShadow: tile && tile.level > 11 ? '0 0 20px rgba(251,146,60,0.6), inset 0 0 12px rgba(251,146,60,0.2)' : undefined,
@@ -198,6 +204,11 @@ export function MergeGrid() {
                     {tile.level > 11 && (
                       <div className="pointer-events-none absolute inset-0 rounded-xl level-ray" style={{ background: 'radial-gradient(circle, rgba(251,191,36,0.6), transparent 60%)' }} />
                     )}
+                    {isMatch3 && (
+                      <div className="pointer-events-none absolute -top-1.5 -right-1.5 rounded-full bg-pink-500 px-1.5 text-[8px] font-bold text-white shadow-lg">
+                        3连
+                      </div>
+                    )}
                   </>
                 ) : null}
               </div>
@@ -206,11 +217,14 @@ export function MergeGrid() {
         )}
       </div>
 
-      {/* 滑动提示 */}
+      {/* 滑动提示 + v0.8 Dpad */}
       <div className="mt-2 flex items-center justify-center gap-2 text-[10px] text-white/30">
         <span>⇆</span>
         <span>滑动合并 · 方向键 / 触屏</span>
         <span className="ml-2 rounded-full bg-white/5 px-1.5 py-0.5 font-mono">C×{bestCombo}</span>
+      </div>
+      <div className="mt-2">
+        <Dpad onSwipe={(d) => handleDirection(d, 0, 0)} />
       </div>
     </div>
   )
